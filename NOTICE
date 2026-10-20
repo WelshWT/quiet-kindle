@@ -1,0 +1,46 @@
+Quiet for Kindle
+Copyright (C) 2026 karlosdb and contributors
+
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General
+Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option)
+any later version. It is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the
+implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See LICENSE for the full text.
+
+Quiet is not affiliated with, endorsed by or sponsored by Amazon, KOReader or SimpleUI. Kindle, Paperwhite,
+Bookerly and Amazon Ember are trademarks of Amazon.com, Inc. or its affiliates, used here only to say what Quiet runs
+on.
+
+
+Built on, not included
+----------------------
+
+Quiet's patches and plugins run inside these programs. Neither is copied into this repository; each is installed
+separately, from its own project, under its own license.
+
+- KOReader (https://github.com/koreader/koreader), GNU AGPL-3.0, Copyright (C) the KOReader contributors. Quiet's
+  patches and plugins extend KOReader at run time, which is why Quiet is AGPL-3.0 too.
+- SimpleUI 2.7.5 by Doctor Hetfield (https://github.com/doctorhetfield-cmd/simpleui.koplugin), MIT License,
+  Copyright (c) 2026 doctorhetfield-cmd. (Releases after 2.7.5 are GPL-3.0 on the project's main branch; GPL-3.0
+  can be combined with AGPL-3.0 code under section 13 of both licenses.)
+
+
+Included
+--------
+
+- kindle/data/dict/WordNet/dictd_www.dict.org_wn.ifo: the header of the StarDict edition of WordNet 3 (by Hu
+  Zheng), edited to mark it HTML. WordNet is Copyright 2006 by Princeton University, under the WordNet License
+  (https://wordnet.princeton.edu/license-and-commercial-use), which allows use, copying and distribution with the
+  copyright notice. The dictionary itself is not included; see README.md.
+- kindle/data/quiet-sleep/: sleep covers drawn by tools/sleep-covers/make_covers.py with Rubik Black by Hubert and
+  Fischer (https://fonts.google.com/specimen/Rubik), SIL Open Font License 1.1. The font file is not included.
+- docs/images/: screenshots of Quiet in KOReader's emulator with public-domain books from Standard Ebooks
+  (https://standardebooks.org), whose editions and covers are dedicated to the public domain (CC0).
+
+
+Not included
+------------
+
+No Amazon code, firmware, fonts, books or other Amazon files are in this repository. Quiet uses the interfaces the
+Kindle's own software offers to programs on the device (lipc properties, app URIs, the light sensor device, Amazon's
+read-only book catalog), and refers to the Kindle's fonts by file name. Quiet does not touch DRM: books bought from
+Amazon still open only in Amazon's reader.

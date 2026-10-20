@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# kawake on|off — stop (on) or allow (off) the Kindle's screensaver while Claude works on it.
+# KOReader's own idle sleep is a setting (auto_suspend_timeout_seconds), changed through a change file.
+set -euo pipefail
+host=$("$(dirname "$0")/khost")
+case "${1:-}" in
+    on)  ssh "$host" 'lipc-set-prop com.lab126.powerd preventScreenSaver 1' ;;
+    off) ssh "$host" 'lipc-set-prop com.lab126.powerd preventScreenSaver 0' ;;
+    *)   echo "usage: kawake on|off" >&2; exit 2 ;;
+esac
+ssh "$host" 'lipc-get-prop com.lab126.powerd status | grep prevent'

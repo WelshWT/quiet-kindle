@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# kcmd WORDS... — send one command to the Quiet bridge inside KOReader and print its answer.
+# The bridge looks every 2 s while it's being used and every 20 s when idle, so the first answer can take a while;
+# an open is answered once the book is open (up to 15 s more), so kcmd waits up to 45 s for its answer (review C1-F5).
+#   kcmd status | kcmd flush | kcmd event SimpleUIGoHomescreen | kcmd restart (prefer kpush for restarts)
+# The command travels on ssh's stdin, so quotes arrive as typed; it is published in one step and never over a
+# request that is still waiting; and it carries an id, so its answer comes back in its own file (review C1-5/C1-6).
+# It is published only if it arrived whole (a line, newline included): a cut-short or unwritable one never reaches
+# the bridge (review C1-33's class). An answer that is an error (error..., syntax:..., unknown ...) makes kcmd fail
+# too, so scripts don't carry on as if it had worked (review C1-F2).
+set -euo pipefail
+host=$("$(dirname "$0")/khost")
+id="$(date +%s%N)-$$"
+answer=$(printf '@%s %s\n' "$id" "$*" | ssh "$host" "t=/tmp/quiet-cmd.$id; a=/tmp/quiet-ack.$id
+cat > \$t && [ -s \$t ] && [ -z \"\$(tail -c 1 \$t)\" ] ||
+    { rm -f \$t; echo 'kcmd: the request did not arrive whole on the Kindle (is /tmp full?): not sent' >&2; exit 1; }
+n=0
+until ln \$t /tmp/quiet-cmd 2>/dev/null; do
+    n=\$((n + 1))
+    [ \$n -gt 60 ] && { rm -f \$t; echo 'the bridge is still busy with another command' >&2; exit 1; }
+    usleep 500000
+done
+rm -f \$t
+n=0
+until [ -f \$a ]; do
+    n=\$((n + 1))
+    [ \$n -gt 90 ] && { echo 'no answer from the bridge' >&2; exit 1; }
+    usleep 500000
+done
+cat \$a
+rm -f \$a")
+printf '%s\n' "$answer"
+case $answer in error* | syntax:* | "unknown "*) exit 1 ;; esac

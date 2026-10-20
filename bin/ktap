@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# ktap X Y — tap the Kindle screen at full-resolution portrait coordinates (1272x1696), like a finger would.
+# Each tap lands up to 1 px off: the input core drops a coordinate that repeats the previous contact's, so two
+# injected taps on the very same pixel would lose the second one's position (a finger never does that).
+# Touches take turns with every other ktap and khold (a lock on the Kindle): a tap never lands in the middle of
+# another call's hold (review C1-32).
+set -euo pipefail
+host=$("$(dirname "$0")/khost")
+x=$(( $1 + RANDOM % 3 - 1 )); y=$(( $2 + RANDOM % 3 - 1 ))
+ssh "$host" "exec 9>>/tmp/quiet-touch.lock
+n=0
+until flock -n -x 9; do
+    n=\$((n + 1))
+    [ \$n -lt 300 ] || { echo 'ktap: another touch has been going on for 30 s' >&2; exit 1; }
+    usleep 100000
+done
+cd /mnt/us/koreader && ./luajit -e 'require(\"setupkoenv\"); require(\"libs/libkoreader-input\").fakeTapInput(\"/dev/input/event1\", $x, $y)' >/dev/null 2>&1 9>&-"

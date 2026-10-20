@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+# kboot on|off|status — boot the Kindle straight into KOReader (kindle-system/koreader-boot.conf in /etc/upstart).
+#   on      install the boot job (root filesystem made writable for the copy, then read-only again)
+#   off     remove it: the Kindle boots into Amazon's home again
+#   status  is it installed, and is the escape hatch (/mnt/us/koreader-boot-off) set
+# Takes effect at the next boot. Without SSH (KOReader not running), the escape hatch is a file named
+# koreader-boot-off in the Kindle's top folder, created over USB.
+# The root filesystem goes back to read-only however the change ends (a trap, also on a dropped connection), and
+# kboot fails loudly if it couldn't (review C1-9). A new job is copied beside the old one, checked against this
+# folder's copy, and only then renamed over it, so a copy that fails or is cut short leaves the installed job as it
+# was (review C1-28).
+set -euo pipefail
+root=$(cd "$(dirname "$0")/.." && pwd)
+host=$("$root/bin/khost")
+job=/etc/upstart/koreader-boot.conf
+conf="$root/kindle-system/koreader-boot.conf"
+sum=$(md5sum < "$conf" | cut -c1-32)
+
+# Runs on the Kindle: one kboot at a time (a lock: the copy beside the job, and / being writable, belong to one
+# call; review C1-30), make / writable, do $1, make / read-only again (also when cut short), check it is.
+remote() {
+    ssh "$host" "exec 9>>/tmp/quiet-kboot.lock
+n=0
+until flock -n -x 9; do
+    n=\$((n + 1))
+    [ \$n -lt 60 ] || { echo 'kboot: another kboot has been busy on the Kindle for 30 s' >&2; exit 1; }
+    usleep 500000
+done
+ro() { rm -f $job.new; mntroot ro >/dev/null 2>&1; }
+trap ro EXIT HUP INT TERM
+mntroot rw >/dev/null || { echo 'kboot: could not make the root filesystem writable' >&2; exit 1; }
+$1
+s=\$?
+trap - EXIT HUP INT TERM
+ro
+if grep -q ' / [^ ]* rw[ ,]' /proc/mounts; then echo 'kboot: the root filesystem is still writable' >&2; exit 3; fi
+exit \$s"
+}
+
+case "${1:-status}" in
+    on)
+        remote "cat > $job.new && [ \"\$(md5sum < $job.new | cut -c1-32)\" = $sum ] && chmod 644 $job.new && mv -f $job.new $job ||
+            { echo 'kboot: the copy on the Kindle failed or came out different: the installed job is unchanged' >&2; false; }" < "$conf"
+        echo "installed: the Kindle boots into KOReader from the next restart" ;;
+    off)
+        remote "rm -f $job" < /dev/null
+        echo "removed: the Kindle boots into Amazon's home again" ;;
+    status)
+        ssh "$host" "if [ ! -f $job ]; then echo 'boot job: not installed'
+            elif [ \"\$(md5sum < $job | cut -c1-32)\" = $sum ]; then echo 'boot job: installed (the same as kindle-system/koreader-boot.conf)'
+            else echo 'boot job: installed, but NOT the same as kindle-system/koreader-boot.conf (kboot on replaces it)'; fi
+            [ -f /mnt/us/koreader-boot-off ] && echo 'escape hatch: set (boot job skipped)' || true
+            grep -q ' / [^ ]* rw[ ,]' /proc/mounts && echo 'root filesystem: WRITABLE' || echo 'root filesystem: read-only (as it should be)'" ;;
+    *) echo "usage: kboot on|off|status" >&2; exit 2 ;;
+esac

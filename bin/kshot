@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+# kshot [name] — screenshot the Kindle into shots/<time>-<name>.png (plus a half-size copy) and print the path.
+# Only a screenshot this call made is fetched, and it leaves the Kindle only once both files here have their names.
+# On the Kindle, calls take turns (a lock in /tmp), the screenshot tool must exit 0, and exactly one new picture may
+# appear, no older than the moment capture started; if another one appeared too (a capture made on the Kindle
+# meanwhile), which is this call's can't be told, so none is taken and none removed (review C1-8, C1-21, C1-24).
+# The one taken is set aside there as kshot-<id>.png and sent. Here it must arrive whole (a PNG's end marker), its
+# half-size copy is made, and both get their final names with ln, which never replaces a file, so calls in the same
+# second, even with the same name, keep every picture (review C1-22, C1-23). Only then does a second ssh remove it
+# from the Kindle: any failure before that leaves it there (review C1-27).
+set -euo pipefail
+root=$(cd "$(dirname "$0")/.." && pwd)
+name=${1:-}
+case $name in */* | -*) echo "kshot: a name can't contain / or start with -" >&2; exit 2 ;; esac
+host=$("$root/bin/khost")
+tmp=$(mktemp "$root/shots/.kshot-XXXXXX.png")
+small=$(mktemp "$root/shots/.kshot-XXXXXX-small.png")
+id=${tmp##*/.kshot-}
+kept=/mnt/us/screenshots/kshot-${id%.png}.png # mktemp's letters and digits: safe on the Kindle's command line
+fetched=""
+trap 'rm -f "$tmp" "$small"; [ -z "$fetched" ] || echo "kshot: the picture stays on the Kindle as $kept" >&2' EXIT
+ssh "$host" "k=$kept"'
+d=/mnt/us/screenshots
+exec 9>>/tmp/quiet-kshot.lock # >>: never truncates whatever that name might point to
+n=0
+until flock -n -x 9; do # busybox flock on the Kindle has no -w; one capture there takes about 11 s
+    n=$((n + 1))
+    [ "$n" -lt 120 ] || { echo "kshot: other kshot calls have kept the Kindle busy for 60 s" >&2; exit 1; }
+    usleep 500000
+done
+t0=$(date +%s)
+before=$(for p in "$d"/*.png; do printf "%s\n" "$p"; done)
+/usr/sbin/screenshot >/dev/null 2>&1 9>&- || { echo "kshot: the screenshot tool failed" >&2; exit 1; }
+f=""; c=0; new=""
+for p in "$d"/*.png; do
+    [ -e "$p" ] || continue
+    printf "%s\n" "$before" | grep -qxF "$p" && continue       # was already there
+    c=$((c + 1)); f=$p; new="$new ${p##*/}"
+done
+[ "$c" -gt 0 ] || { echo "kshot: no new screenshot appeared" >&2; exit 1; }
+[ "$c" -eq 1 ] || { echo "kshot: $c new screenshots appeared ($new ): none taken or removed" >&2; exit 1; }
+[ "$(stat -c %Y "$f" 2>/dev/null || echo 0)" -ge "$t0" ] || { echo "kshot: ${f##*/} is older than this capture: left alone" >&2; exit 1; }
+{ [ ! -e "$k" ] && mv "$f" "$k"; } || { echo "kshot: ${f##*/} could not be set aside: left as it is" >&2; exit 1; }
+cat "$k" || { echo "kshot: sending it failed: it stays on the Kindle as $k" >&2; exit 1; }' > "$tmp"
+fetched=1
+[ "$(tail -c 12 "$tmp" | od -An -tx1 | tr -d ' \n')" = 0000000049454e44ae426082 ] ||
+    { echo "kshot: the picture arrived incomplete" >&2; exit 1; }
+magick "$tmp" -resize 50% "$small"
+stamp=$(date +%Y%m%d-%H%M%S)
+n=1
+while :; do
+    out="$root/shots/$stamp${name:+-$name}"
+    [ "$n" -eq 1 ] || out="$out-$n"
+    if ln "$tmp" "$out.png" 2>/dev/null; then
+        ln "$small" "$out-small.png" 2>/dev/null && break
+        rm -f "$out.png" # the half-size name is someone else's (say kshot x-small in the same second): next number
+    fi
+    n=$((n + 1))
+    [ "$n" -le 100 ] || { echo "kshot: couldn't give the picture a name in $root/shots" >&2; exit 1; }
+done
+fetched=""
+ssh "$host" "rm -f $kept" || echo "kshot: saved here, but $kept is still on the Kindle" >&2
+echo "$out-small.png"

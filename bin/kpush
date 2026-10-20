@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+# kpush [--no-restart|--hard] [name] — copy kindle/ over /mnt/us/koreader on the Kindle, then have KOReader
+# save and restart so new change files and plugin code take effect. Prints a screenshot path when it's back.
+#   (default)      restart through the Quiet bridge: the open book is saved and reopened
+#   --no-restart   copy only
+#   --hard         kill KOReader and start it again (first install, or the bridge isn't running);
+#                  only on the home screen: an open book would lose its unsaved position
+set -euo pipefail
+root=$(cd "$(dirname "$0")/.." && pwd)
+mode=bridge
+case "${1:-}" in --no-restart|--hard) mode=$1; shift ;; esac
+host=$("$root/bin/khost")
+# The archive reaches the Kindle whole first: saved there, checked against this side's (md5), unpacked into a folder
+# of its own, and only then is each file renamed into place. A copy that fails or is cut short anywhere (between two
+# files too, where tar would see a normal end) changes nothing there, and no file KOReader loads is ever left
+# half-written (review C1-28's class). Pushes take turns there (a lock), so two never mix their files (C1-30's).
+pack=$(mktemp -t kpush-XXXXXX)
+trap 'rm -f "$pack"' EXIT
+tar -C "$root/kindle" -cf "$pack" .
+ssh "$host" "k=/mnt/us/koreader; sum=$(md5sum < "$pack" | cut -c1-32)"'; s=$k/.kpush-$$
+exec 9>>/tmp/quiet-kpush.lock
+n=0
+until flock -n -x 9; do # busybox flock on the Kindle has no -w
+    n=$((n + 1))
+    [ "$n" -lt 120 ] || { echo "kpush: another push has been busy on the Kindle for 60 s" >&2; exit 1; }
+    usleep 500000
+done
+fail() { cd /; rm -rf "$s" "$s.tar" "$s.list"; echo "kpush: $1" >&2; exit 1; }
+trap '\''fail "stopped (the connection dropped?): every file is whole, push again"'\'' HUP INT TERM
+mkdir "$s" && cat > "$s.tar" && [ "$(md5sum < "$s.tar" | cut -c1-32)" = "$sum" ] && tar -C "$s" -xf "$s.tar" ||
+    fail "the copy to the Kindle failed or came out different: nothing there was changed"
+cd "$s" && find . -type f > "$s.list" || fail "the new files could not be listed: nothing there was changed"
+while read -r f; do
+    mkdir -p "$k/${f%/*}" && mv -f "$f" "$k/$f" || fail "putting the new files in place stopped partway (each file is whole): push again"
+done < "$s.list"
+[ -z "$(find . -type f)" ] || fail "some new files were not put in place: push again"
+cd / && rm -rf "$s" "$s.tar" "$s.list" && echo "copied to $k"' < "$pack"
+[ "$mode" = "--no-restart" ] && exit 0
+before=$(ssh "$host" 'cat /tmp/quiet-ready 2>/dev/null || echo 0')
+if [ "$mode" = "--hard" ]; then
+    ssh "$host" 'kill -9 $(pgrep -f "luajit [.]/reader.lua") 2>/dev/null; for i in $(seq 1 10); do pgrep -f "[k]oreader.sh" >/dev/null || break; sleep 1; done; nohup setsid /var/local/kmc/bin/kpm launch koreader --asap </dev/null >/dev/null 2>&1 & echo "restarted the hard way"'
+else
+    "$root/bin/kcmd" restart
+fi
+now=$before
+for i in $(seq 1 60); do
+    now=$(ssh "$host" 'cat /tmp/quiet-ready 2>/dev/null || echo 0')
+    [ "$now" != "$before" ] && break
+    sleep 1
+done
+if [ "$now" = "$before" ]; then echo "KOReader did not come back within 60 s" >&2; exit 1; fi
+ssh "$host" 'echo "applied this start: $(cat /tmp/quiet-applied 2>/dev/null)"'
+sleep 4
+"$root/bin/kshot" "${1:-push}"

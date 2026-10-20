@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# kkeys — put the Claude and Jev keys on the Kindle (settings/quiet/keys.lua, read by quiet_keys.lua).
+# Reads api-key (Claude) and, if present, jev-key (Jev) from $QUIET_KEYS_DIR (default ~/.config/quiet-kindle),
+# one key per file; keep the folder and files private (chmod 700/600). The keys travel
+# through ssh's stdin only, never a command line, and are never printed. Re-run after changing a key.
+set -euo pipefail
+root=$(cd "$(dirname "$0")/.." && pwd)
+dir="${QUIET_KEYS_DIR:-$HOME/.config/quiet-kindle}"
+
+read_key() {
+    [ -f "$1" ] || return 0
+    local k
+    k=$(tr -d ' \t\r\n' < "$1")
+    # anything that could break out of a Lua string is refused rather than escaped
+    if [[ -n "$k" && ! "$k" =~ ^[A-Za-z0-9._~+/=:-]+$ ]]; then
+        echo "kkeys: $(basename "$1") has unexpected characters; not sent" >&2
+        exit 1
+    fi
+    printf '%s' "$k"
+}
+
+anthropic=$(read_key "$dir/api-key")
+jev=$(read_key "$dir/jev-key")
+if [ -z "$anthropic" ] && [ -z "$jev" ]; then
+    echo "kkeys: no keys in $dir" >&2
+    exit 1
+fi
+jev_via=typesafe
+[[ "$jev" == sk-or-* ]] && jev_via=openrouter
+
+host=$("$root/bin/khost")
+{
+    printf -- '-- written by bin/kkeys; read by quiet_keys.lua\nreturn {\n'
+    [ -n "$anthropic" ] && printf '    anthropic = "%s",\n' "$anthropic"
+    [ -n "$jev" ] && printf '    jev = "%s",\n    jev_via = "%s",\n' "$jev" "$jev_via"
+    printf '}\n'
+} | ssh "$host" 'umask 077; d=/mnt/us/koreader/settings/quiet; mkdir -p "$d" && cat > "$d/keys.lua.tmp" \
+    && chmod 600 "$d/keys.lua.tmp" && mv "$d/keys.lua.tmp" "$d/keys.lua"'
+
+msg=""
+[ -n "$anthropic" ] && msg="anthropic"
+[ -n "$jev" ] && msg="${msg:+$msg, }jev ($jev_via)"
+echo "saved: $msg"

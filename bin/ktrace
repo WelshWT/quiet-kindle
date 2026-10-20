@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# ktrace on|dump — time what KOReader does: each tap, repaint and e-ink update (with the driver's waits), in ms.
+#   ktrace on     install the tracer inside KOReader (lasts until KOReader restarts)
+#   ktrace dump   print everything since the last dump, then start over
+# Typical use: ktrace on; ktrace dump >/dev/null; bin/ktap X Y; sleep 2; ktrace dump
+set -euo pipefail
+root=$(cd "$(dirname "$0")/.." && pwd)
+host=$("$root/bin/khost")
+case "${1:-}" in
+    on) # The tracer goes to a file of this call's own, checked whole (md5) before KOReader loads it and removed once
+        # loaded: no other call can cut it short in between (review C1-31's sibling).
+        sum=$(md5sum < "$root/tools/qtrace.lua" | cut -c1-32)
+        f=$(ssh "$host" "f=\$(mktemp /tmp/qtrace.XXXXXX) || exit 1
+cat > \"\$f\"
+[ \"\$(md5sum < \"\$f\" | cut -c1-32)\" = $sum ] || { rm -f \"\$f\"; exit 1; }
+echo \"\$f\"" < "$root/tools/qtrace.lua") || { echo "ktrace: the tracer didn't arrive whole: not loaded" >&2; exit 1; }
+        [[ $f =~ ^[A-Za-z0-9/._-]+$ ]] || { echo "ktrace: unexpected temp file name: $f" >&2; exit 1; }
+        "$root/bin/kcmd" "lua local f = '$f'; local ok, r = pcall(dofile, f); os.remove(f); if not ok then error(r, 0) end; return r" ;;
+    dump) "$root/bin/kcmd" 'lua return QTRACE_DUMP and QTRACE_DUMP() or "not tracing: ktrace on"' ;;
+    *) echo "usage: ktrace on|dump" >&2; exit 2 ;;
+esac

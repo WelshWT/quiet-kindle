@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# khold X Y [ms [X2 Y2]] — press and hold on the Kindle screen (portrait 1272x1696 coordinates), default 1.2 s,
+# optionally dragging to X2 Y2 before letting go (selects text).
+# Like ktap, it lands up to 1 px off so a repeat on the same spot keeps its coordinates.
+# One ssh: tools/khold.lua goes to a file of this call's own (mktemp) and runs only if it arrived whole (md5), so no
+# other call can cut it short before it runs (review C1-31); and touches take turns with every other khold and ktap
+# (a lock on the Kindle), so no other call moves or lifts this finger (review C1-32).
+set -euo pipefail
+root=$(cd "$(dirname "$0")/.." && pwd)
+host=$("$root/bin/khost")
+x=$(( $1 + RANDOM % 3 - 1 )); y=$(( $2 + RANDOM % 3 - 1 ))
+sum=$(md5sum < "$root/tools/khold.lua" | cut -c1-32)
+ssh "$host" "f=\$(mktemp /tmp/khold.XXXXXX) || exit 1
+trap 'rm -f \"\$f\"' EXIT
+trap 'exit 1' HUP INT TERM
+cat > \"\$f\"
+[ \"\$(md5sum < \"\$f\" | cut -c1-32)\" = $sum ] || { echo 'khold: the script arrived incomplete: nothing pressed' >&2; exit 1; }
+exec 9>>/tmp/quiet-touch.lock
+n=0
+until flock -n -x 9; do
+    n=\$((n + 1))
+    [ \$n -lt 300 ] || { echo 'khold: another touch has been going on for 30 s' >&2; exit 1; }
+    usleep 100000
+done
+cd /mnt/us/koreader && ./luajit \"\$f\" $x $y ${3:-1200} ${4:-} ${5:-} 9>&-" < "$root/tools/khold.lua"

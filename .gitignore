@@ -1,0 +1,9 @@
+shots/
+*.png
+# the sleep covers ship with Quiet (tools/sleep-covers makes them)
+!kindle/data/quiet-sleep/*.png
+!kindle/data/quiet-sleep/tiles/*.png
+!docs/images/*.png
+# per-Kindle files: they live only on the device (settings/quiet/ there), never here
+kindle/settings/quiet/keys.lua
+kindle/settings/quiet/amazon_finished.lua

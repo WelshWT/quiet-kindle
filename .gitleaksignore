@@ -1,0 +1,2 @@
+# false positive in the old history: the selection bar's menu key "06_dictionary", not a secret
+29adb5fe21490428ff82f1ac60a8fe61be7a2c71:kindle/plugins/quiet.koplugin/quiet_selbar.lua:generic-api-key:23

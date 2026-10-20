@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# khost — print the ssh host that reaches the Kindle right now. Tries each name in $KINDLE_HOSTS in turn
+# (default: "kindle", an entry in ~/.ssh/config), e.g. KINDLE_HOSTS="kindle kindle-vpn" for home Wi-Fi, then a VPN.
+for h in ${KINDLE_HOSTS:-kindle}; do
+    if ssh -o ConnectTimeout=4 -o BatchMode=yes "$h" true 2>/dev/null; then echo "$h"; exit 0; fi
+done
+echo "Kindle unreachable: it must be awake, unplugged and in KOReader" >&2
+exit 1
