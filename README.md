@@ -30,10 +30,11 @@ choices and the research behind them are in [docs/design.md](docs/design.md).
 ## What you get
 
 **Home and Library.** The book you're reading, with how much you've read and an honest time left to the end of the
-story; your collections; the Library as a list or a cover grid, with search, Hide read and the Kindle Store. Books
-bought from Amazon show up too and open in Amazon's own reader.
+story; your collections; the Library as a list or a cover grid, sorted by Recent, Date added, Title, Author or
+Series, with search, Hide read and the Kindle Store. Books bought from Amazon show up too and open in Amazon's own
+reader.
 
-![Home, the Library as a list, the Library as a grid](docs/images/home-library.png)
+![Home, the Library as a list, the Sort sheet, the Library as a grid](docs/images/home-library.png)
 
 **Reading.** Bookerly with researched size, spacing and margins. A tap on the top band brings the toolbar and the page
 scrubber; "Page 184 of 594" opens a keypad to go anywhere.
@@ -202,11 +203,16 @@ restart; KOReader saves the open book first and reopens it afterwards.
   (CoverBrowser's display mode). The grid keeps `2-quiet-soft.lua`'s look, covers at full strength (change 025
   turned off SimpleUI's fading of finished books). The header's left side has a labelled Store button
   (`quiethome.koplugin/qh_sheets.lua`): "Shop in the Kindle Store" and "Kindle home & settings". Next to the
-  switch, "Hide read" leaves finished books out of the list and the grid (Amazon's too); it is KOReader's own
-  status filter, so it is remembered, and file search still finds read books. The header has no "Library" title
-  (change 026: the Library tab says where you are); in its room, search is a wide "Search your library" field.
+  switch, Sort opens a sheet of five orders for the list and the grid: Recent (last opened first), Date added
+  (newest first), Title (A to Z, a leading "The" left out), Author (by last name, each author's series in order)
+  and Series (each series in order, then the rest). They are KOReader collates, kept with its settings (change 031
+  starts on Title), so file search follows them too. Left of Sort, "Hide read" leaves finished books out of the
+  list and the grid (Amazon's too); it is KOReader's own status filter, so it is remembered, and file search still
+  finds read books. The header has no "Library" title (change 026: the Library tab says where you are); in its
+  room, search is a wide field whose hint is the longest that fits ("Search books").
 - Kindle Store books in the Library (`quiethome.koplugin/qh_library.lua`): Amazon's own books (KFX/DRM, only
-  Amazon's reader opens them) are virtual entries among the real ones, sorted by title, marked with a ↗ badge
+  Amazon's reader opens them) are virtual entries among the real ones, sorted with them (by their download for
+  Date added, and in a series read from Amazon's title, "…: Sherlock Holmes, Book 5"), marked with a ↗ badge
   and "Opens in Amazon's reader ↗"; tap opens the book there, hold explains. Nothing is written to documents/.
 - `kindle/patches/2-quiet-currently.lua` — Home's Currently Reading card: "5% done", then honest time read and
   time left to the end of the story. SimpleUI draws it; the numbers come from `quiet_readtime.lua`.

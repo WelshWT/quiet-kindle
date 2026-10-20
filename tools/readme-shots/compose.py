@@ -118,7 +118,7 @@ def hero(out, names=("home", "reader", "sleep-q3")):
 
 
 hero("hero.png")
-row(["home", "library-list", "library-grid"], "home-library.png")
+row(["home", "library-list", "library-sort", "library-grid"], "home-library.png", dev_w=500, gap=60)
 row(["reader", "reader-toolbar", "goto"], "reading.png")
 row(["text-tab", "layout-tab", "more-sheet"], "sheets.png")
 row(["ask", "stats"], "ask-stats.png", dev_w=640)

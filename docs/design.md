@@ -45,6 +45,14 @@ section name.
 - Clickable things look clickable: weak signifiers cost people about 22% more time (Kate Moran, "Flat UI Elements
   Attract Less Attention and Cause Uncertainty", NN/g 2017). Lists suit finding a known book, grids suit browsing
   covers, so the Library has both, one tap apart.
+- The Library sorts five ways from one Sort button that names the order in use: Recent, Date added, Title, Author,
+  Series. Amazon's Kindle has Recent, Title, Author and Collection under its Sort button (iDownloadBlog, 2021); Kobo
+  adds Date added and Series, plus file size and type (MobileRead); Apple Books has Recent, Title, Author and
+  Manually (Apple Books User Guide). Recent is the last time a book was opened, as on a Kindle, and books never
+  opened follow, newest first. Titles file under their first real word ("The Martian" under M) and authors under
+  their last name, as a library catalogue files them. Collections already have their own row on Home, and file size
+  and type say nothing about a book, so neither is an order. The orders open in a sheet like Store's: 136 px
+  (11.5 mm) rows, the current one bold on a grey capsule with a check, so it's marked by more than grey.
 
 ## Reading text
 
@@ -144,7 +152,8 @@ Wroblewski, "Obvious Always Wins"; epaper-components.dev; KOReader 2026.07.1 and
 AOSP AutomaticBrightnessController and BrightnessMappingStrategy; US patent 8,749,538 (front-light comfort study);
 MDPI Applied Sciences 11:8679 (2021); Lighting Research & Technology (2024). Search: Jakob Nielsen, "Search: Visible
 and Simple" (2001); TypeSafe's Jev documentation; coverage of Amazon's "Ask this Book" (December 2025). Clickability:
-Kate Moran, NN/g (2017). Stats: Silverman & Barasch, Journal of Consumer Research 49(6), 2023; Lally et al., European
+Kate Moran, NN/g (2017). Library sorting: iDownloadBlog, "How to sort, filter, and manage your Kindle Paperwhite
+library" (2021); MobileRead forums on Kobo's My Books sorts; Apple Books User Guide, "Sort books". Stats: Silverman & Barasch, Journal of Consumer Research 49(6), 2023; Lally et al., European
 Journal of Social Psychology, 2010; Dai, Milkman & Riis, Management Science, 2014; Kivetz, Urminsky & Zheng, Journal
 of Marketing Research, 2006; Cleveland & McGill, JASA, 1984; Brysbaert, Journal of Memory and Language, 2019. Reading
 text: Legge & Bigelow 2011; Chung 2004; Rello 2016; Dyson & Haselgrove 2001; Piepenbrock 2013/2014; Wallace 2022;

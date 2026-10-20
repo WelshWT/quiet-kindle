@@ -21,8 +21,11 @@ as the old Store row did.
         pct         = 0..1 from p_percentFinished, or nil when never opened,
         finished    = true when Amazon marked it read (p_readState 1 or 2) or it's at 99.5 %,
         last_opened = unix time (p_lastAccess) or nil,
+        added       = unix time it arrived on this Kindle (p_modificationTime, its download) or nil,
+        series      = "Sherlock Holmes" and series_index = 5, from a title like "…: Sherlock Holmes, Book 5"
+                      (Amazon's own series entries are mostly empty), or nil,
     }
-The list is re-read only when cc.db changes. If cc.db can't be read, the books found on 2026-10-19 are used.
+The list is re-read only when cc.db changes. If cc.db can't be read, FALLBACK is used (empty as shipped).
 ]]
 
 local lfs = require("libs/libkoreader-lfs")
@@ -34,14 +37,20 @@ S.DB = "/var/local/cc.db"
 S.THUMBS = "/mnt/us/system/thumbnails/"
 
 -- Downloaded catalogue items KOReader can't read: KFX (Amazon's current format) or anything DRM-protected.
--- Archived rows are cloud-only copies of the same books.
-local QUERY = [[
+-- Archived rows are cloud-only copies of the same books. The last column is when the book arrived (its download):
+-- `added` is "p_modificationTime" where the catalogue has that column and "NULL" where it doesn't, so a catalogue
+-- without it still lists its books.
+local function query(added)
+    return [[
 SELECT p_cdeKey, p_cdeType, p_uuid, p_location, p_mimeType, p_titles_0_nominal, j_credits, p_thumbnail,
-       p_percentFinished, p_readState, p_lastAccess
+       p_percentFinished, p_readState, p_lastAccess, ]] .. added .. [[
+
 FROM Entries
 WHERE p_type = 'Entry:Item' AND p_location IS NOT NULL AND p_isArchived = 0
   AND (p_mimeType = 'application/x-kfx-ebook' OR lower(p_location) LIKE '%.kfx' OR p_isDRMProtected = 1)
 ]]
+end
+S.query = query
 
 local function trim(s)
     return (tostring(s or ""):gsub("^%s+", ""):gsub("%s+$", ""))
@@ -94,6 +103,23 @@ function S.cleanTitle(title, authors)
     return title
 end
 
+-- A book's series and its number, from the few shapes Amazon's titles put them in; nil for any other title.
+local SERIES_SHAPES = {
+    "^.-:%s*(.-),%s*[Bb]ook%s+(%d+%.?%d*)$",    -- "The Hound of the Baskervilles: Sherlock Holmes, Book 5"
+    "^.-%((.-),?%s+[Bb]ook%s+(%d+%.?%d*)%)$",   -- "The Sign of the Four (Sherlock Holmes Book 2)", "(…, Book 2)"
+    "^.-%((.-)%s+#(%d+%.?%d*)%)$",              -- "The Sign of the Four (Sherlock Holmes #2)"
+    "^.-:%s*(.-)%s+[Bb]ook%s+(%d+%.?%d*)$",     -- "The Sign of the Four: Sherlock Holmes Book 2"
+}
+function S.seriesFrom(full_title)
+    local t = trim(full_title)
+    for _, shape in ipairs(SERIES_SHAPES) do
+        local series, n = t:match(shape)
+        series = series and trim(series)
+        if series and series ~= "" then return series, tonumber(n) end
+    end
+    return nil, nil
+end
+
 function S.isFinished(read_state, pct)
     read_state = tonumber(read_state)
     if read_state and read_state >= 1 then return true end
@@ -118,8 +144,8 @@ end
 -- One book from a query row (positions as in QUERY).
 function S.fromRow(row, exists)
     exists = exists or fileExists
-    local key, cde_type, uuid, path, mime, full_title, credits, thumb, pct, read_state, last =
-        row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8], row[9], row[10], row[11]
+    local key, cde_type, uuid, path, mime, full_title, credits, thumb, pct, read_state, last, added =
+        row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8], row[9], row[10], row[11], row[12]
     if not key or not path then return nil end
     key = tostring(key)
     cde_type = cde_type and tostring(cde_type) or nil
@@ -132,6 +158,7 @@ function S.fromRow(row, exists)
         if not exists(cover) then cover = nil end
     end
     local title = S.cleanTitle(full_title or "", names)
+    local series, series_index = S.seriesFrom(full_title and tostring(full_title) or "")
     return {
         asin = key,
         cde_key = key,
@@ -146,6 +173,9 @@ function S.fromRow(row, exists)
         pct = pct,
         finished = S.isFinished(read_state, pct),
         last_opened = tonumber(last),
+        added = tonumber(added),
+        series = series,
+        series_index = series_index,
     }
 end
 
@@ -176,10 +206,16 @@ local function readDb()
     end
     local rows = {}
     local ok_q, err = pcall(function()
-        local stmt = conn:prepare(QUERY)
+        local added = "NULL"
+        local cols = conn:prepare("PRAGMA table_info(Entries)")
+        for col in cols:rows() do
+            if tostring(col[2]) == "p_modificationTime" then added = "p_modificationTime" end
+        end
+        cols:close()
+        local stmt = conn:prepare(query(added))
         for row in stmt:rows() do
             local copy = {}
-            for i = 1, 11 do copy[i] = row[i] end
+            for i = 1, 12 do copy[i] = row[i] end
             rows[#rows + 1] = copy
         end
         stmt:close()

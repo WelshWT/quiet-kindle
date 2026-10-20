@@ -1,5 +1,5 @@
 --[[
-Two small sheets in the Quiet style, both over the Library:
+Three small sheets in the Quiet style, all over the Library:
 
   amazon()  The Library header's "Store" button: the way to Amazon's side when it's needed. Asked for: "u just want to
             access books from ur library. but there should still be an intuitive way to go back to the amazon
@@ -7,6 +7,8 @@ Two small sheets in the Quiet style, both over the Library:
             Store" and "Kindle home & settings", and one line on how to come back.
   book(b)   Holding one of Amazon's books in the Library: what it is and where it opens, with one button to open
             it. It replaces KOReader's file menu, whose delete and rename make no sense for these.
+  sort(...) The Library header's Sort button: Recent, Date added, Title, Author, Series (patches/2-quiet-library.lua
+            has the orders), the one in use checked.
 ]]
 
 local CenterContainer = require("ui/widget/container/centercontainer")
@@ -178,9 +180,55 @@ function BookSheet:build()
     self.content = CenterContainer:new{ dimen = Geom:new{ w = W, h = self.panel_h }, self.content }
 end
 
+-- The Library header's Sort button: the orders, each with a line on what it does, the current one bold on a soft
+-- capsule with a check. A tap sorts the Library and closes the sheet.
+local SortSheet = Sheet:extend{ anchor = "bottom", sorts = nil, current = nil, on_pick = nil }
+
+function SortSheet:pick(id)
+    if id ~= self.current and self.on_pick then
+        local ok, err = pcall(self.on_pick, id)
+        if not ok then logger.warn("quiethome: sort failed:", err) end
+    end
+    self:close()
+end
+
+function SortSheet:build()
+    local W = self.W
+    local inner = W - 2 * px(56)
+    self.content = VerticalGroup:new{
+        align = "center",
+        Q.vspan(22), Sheet.grip(), Q.vspan(14),
+        header("Sort by", inner, function() self:close() end), Q.vspan(8),
+    }
+    for _, s in ipairs(self.sorts or {}) do
+        local on = s.id == self.current
+        local text = VerticalGroup:new{ align = "left", Q.text(s.label, 35, { bold = on }),
+            Q.text(s.hint, 27, { color = Q.INK2, max_width = inner - px(160) }) }
+        local parts = {
+            dimen = Geom:new{ w = inner, h = px(136) },
+            LeftContainer:new{ dimen = Geom:new{ w = inner, h = px(136) },
+                HorizontalGroup:new{ align = "center", Q.hspan(28), text } },
+        }
+        if on then
+            parts[#parts + 1] = RightContainer:new{ dimen = Geom:new{ w = inner, h = px(136) },
+                HorizontalGroup:new{ align = "center", U.icon("check", 44), Q.hspan(28) } }
+        end
+        table.insert(self.content, Q.Tap:new{ w = inner, h = px(136), content = OverlapGroup:new(parts),
+            selected = on, capsule_radius = 32, callback = function() self:pick(s.id) end })
+    end
+    table.insert(self.content, Q.vspan(30))
+    self.panel_h = self.content:getSize().h + px(6)
+    self.content = CenterContainer:new{ dimen = Geom:new{ w = W, h = self.panel_h }, self.content }
+end
+
 local S = {}
 
 function S.amazon() show(AmazonSheet, {}) end
+
+-- sorts: { { id, label, hint }, ... }; current: the id in use (nil: none of these); on_pick(id) applies one
+function S.sort(sorts, current, on_pick)
+    show(SortSheet, { sorts = sorts, current = current, on_pick = on_pick })
+end
 
 function S.book(book)
     if book then show(BookSheet, { book = book }) end

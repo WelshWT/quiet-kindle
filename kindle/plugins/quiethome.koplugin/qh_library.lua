@@ -50,13 +50,15 @@ local function makeItem(fc, collate, dir, book)
     -- the ASIN keeps two editions with the same title and author apart
     local path = dir .. "/" .. name .. " (" .. book.asin .. ").kfx"
     virtual[path] = book
+    -- a file's dates: last read is when Amazon's reader last opened it, created and modified when it was downloaded
     local when = book.last_opened or 0
+    local added = book.added or when
     local item = {
         text = name .. ".kfx",
         path = path,
         is_file = true,
-        attr = { mode = "file", size = lfs.attributes(book.path, "size") or 0, modification = when, access = when,
-            change = when },
+        attr = { mode = "file", size = lfs.attributes(book.path, "size") or 0, modification = added, access = when,
+            change = added },
         quiet_amazon = book,
     }
     local okBD, BD = pcall(require, "ui/bidi")
@@ -177,6 +179,8 @@ function L.bookInfo(path, get_cover)
         has_meta = "Y",
         title = book.title,
         authors = book.authors ~= "" and book.authors or nil,
+        series = book.series,
+        series_index = book.series_index,
         has_cover = src and "Y" or nil,
         cover_w = src and src:getWidth() or nil,
         cover_h = src and src:getHeight() or nil,

@@ -18,9 +18,11 @@ with thumbnails, text titles are easier to scan" (change 017 makes the list the 
     A tap opens the book in Amazon's reader; a hold shows where it opens instead of KOReader's file menu; select
     mode leaves them out.
   - a labelled Store button next to search, for Amazon's store and home (qh_sheets.amazon)
-  - a "Hide read" toggle left of the switch. Asked for: "add a 'hide read books' toggle in the library". It is
+  - a "Hide read" toggle left of Sort. Asked for: "add a 'hide read books' toggle in the library". It is
     KOReader's own status filter (show_filter.status: every status but finished), which KOReader remembers; Amazon's
     books follow it; file search still finds read books (KOReader's search never applies the status filter)
+  - a Sort button between Hide read and the switch, for five orders: Recent, Date added, Title, Author, Series
+    (SORTS below). They are KOReader collates, so the grid and file search follow the order too
   - with SimpleUI's "Library" title off (change 026: "it's already obvious at the bottom"), search is a wide field,
     "Search your library", from the search icon's place to the Store button, which moves up to Hide read
 Folders, books not catalogued yet and CoverBrowser's other list modes keep CoverBrowser's own rows. The reading
@@ -345,6 +347,236 @@ local function authorLine(bookinfo)
         line = line and (line .. "  \u{00B7}  " .. series) or series
     end
     return line
+end
+
+-- Sort orders. Asked for: "a sort by menu on the library page so I can sort by date added, alphabetical, etc".
+-- The Kindle's Sort menu has Recent (the last time a book was opened), Title and Author; Kobo adds Date added and
+-- Series. Quiet has those five, as KOReader collates (BookList.collates: the file chooser, file search, the cover
+-- grid and KOReader's own Sort by menu all read them), registered when this patch loads so a saved one is there
+-- the first time KOReader asks for it. They sort by what each book is, not by its file:
+--   Recent      last opened first (KOReader's history; Amazon's reader for its own books and for the ones it
+--               finished before KOReader); books never opened after them, newest first
+--   Date added  newest first: the file's modified date (Amazon's books: their download). Not its change date:
+--               KOReader's history touches a book's file each time it's opened (readhistory.lua, for its own
+--               "last read date" sort), which sets that one to the time of opening. Kindle Shelf and most copies
+--               keep the date the file was made
+--   Title       A to Z, a leading "The", "A" or "An" left out, as a library files titles
+--   Author      by last name ("Doyle, Arthur Conan"); one author's books in series order, then by title
+--   Series      each series A to Z and in its order; then the books in no series, by title
+-- Every book gets every key it's sorted by: Amazon's books from their catalogue record, the others from their
+-- metadata (CoverBrowser's, without ever opening a book), else their file name. A book that reaches a sort without
+-- them (a collection's manual sort) gets them there, so a sort never meets a missing key.
+local SORTS = {
+    { id = "quiet_recent", label = "Recent", hint = "Last opened first" },
+    { id = "quiet_added", label = "Date added", short = "Added", hint = "Newest first" },
+    { id = "quiet_title", label = "Title", hint = "A to Z" },
+    { id = "quiet_author", label = "Author", hint = "A to Z by last name" },
+    { id = "quiet_series", label = "Series", hint = "Each series in order, then other books" },
+}
+
+local function lowered(s)
+    s = tostring(s or "")
+    local ok, util = pcall(require, "util")
+    if ok and type(util) == "table" and util.stringLower then
+        local ok2, low = pcall(util.stringLower, s)
+        if ok2 and type(low) == "string" then return low end
+    end
+    return s:lower()
+end
+
+local ARTICLES = { the = true, a = true, an = true }
+
+-- "The Martian" files under "martian", "'Salem's Lot" under "salem's lot".
+local function titleKey(title)
+    local t = lowered(title):gsub("^[%s%p]+", ""):gsub("^\226\128[\152-\159]", ""):gsub("^[%s%p]+", "")
+    local first, rest = t:match("^(%a+)%s+(%S.*)$")
+    if first and ARTICLES[first] then t = rest end
+    return t
+end
+
+local SUFFIXES = { jr = true, sr = true, ii = true, iii = true, iv = true, phd = true, md = true }
+local function suffix(word) return SUFFIXES[lowered((word:gsub("[%.,]", "")))] end
+
+-- The first author, last name first: "Mary Shelley" -> "shelley mary", "Austen, Jane" -> "austen jane",
+-- "Martin Luther King, Jr." -> "king martin luther"; nil for no author.
+local function authorKey(authors)
+    local name = (tostring(authors or ""):match("^%s*([^\n]*)") or ""):gsub("%s+&%s+.*$", "")
+    name = name:gsub("^%s+", ""):gsub("%s+$", "")
+    if NO_AUTHOR[name:lower()] then return nil end
+    local last, given = name:match("^([^,]+),%s*(.+)$")
+    if last and not suffix(given) then return lowered(last .. " " .. given) end
+    local words = {}
+    for w in name:gmatch("[^%s,]+") do words[#words + 1] = w end
+    while #words > 1 and suffix(words[#words]) do table.remove(words) end
+    local surname = table.remove(words)
+    if not surname then return nil end
+    return lowered(#words > 0 and (surname .. " " .. table.concat(words, " ")) or surname)
+end
+
+local function seriesKey(series)
+    local s = tostring(series or ""):gsub("^%s+", ""):gsub("%s+$", "")
+    return s ~= "" and titleKey(s) or nil
+end
+
+-- When each book was last opened in KOReader (its history: path -> time), rebuilt when the history changes.
+local history = { key = nil, map = {} }
+local function historyTime(path)
+    local ok, ReadHistory = pcall(require, "readhistory")
+    local hist = ok and type(ReadHistory) == "table" and type(ReadHistory.hist) == "table" and ReadHistory.hist or {}
+    local top = hist[1]
+    local key = #hist .. "|" .. tostring(top and top.time) .. "|" .. tostring(top and top.file)
+    if history.key ~= key then
+        local map = {}
+        for _, e in ipairs(hist) do
+            local t = tonumber(e.time)
+            if type(e.file) == "string" and t and t > (map[e.file] or 0) then map[e.file] = t end
+        end
+        history.key, history.map = key, map
+    end
+    local t = history.map[path]
+    if not t then
+        -- the history keeps real paths
+        local okU, ffiUtil = pcall(require, "ffi/util")
+        local real = okU and ffiUtil.realpath and ffiUtil.realpath(path)
+        t = real and history.map[real]
+    end
+    return t
+end
+
+local function noonOf(date)
+    local y, m, d = tostring(date or ""):match("^(%d%d%d%d)%-(%d%d)%-(%d%d)")
+    return y and os.time{ year = tonumber(y), month = tonumber(m), day = tonumber(d), hour = 12 } or nil
+end
+
+local function sortKeys(item, ui, with_props)
+    local path = item.path or item.file or ""
+    local keys = { name = lowered(item.text or path) }
+    local book = item.quiet_amazon
+    if book then
+        keys.opened = (book.pct ~= nil or book.finished) and book.last_opened or 0
+        keys.added = book.added or book.last_opened or 0
+        if with_props then
+            keys.title = titleKey(book.title)
+            keys.author = authorKey((tostring(book.authors or ""):gsub("%s+&%s+", "\n")))
+            keys.series, keys.index = seriesKey(book.series), tonumber(book.series_index)
+        end
+        return keys
+    end
+    keys.opened = math.max(historyTime(path) or 0, noonOf(amazonFinished(path)) or 0)
+    local attr = type(item.attr) == "table" and item.attr.modification and item.attr
+    if not attr then
+        local lfs = require("libs/libkoreader-lfs")
+        attr = lfs.attributes(path) or {}
+    end
+    keys.added = tonumber(attr.modification) or tonumber(attr.change) or 0
+    if with_props then
+        local props
+        local bi = ui and ui.bookinfo
+        if bi and bi.getDocProps then
+            local ok, p = pcall(bi.getDocProps, bi, path, nil, true) -- true: never open the book for it
+            if ok and type(p) == "table" then props = p end
+        end
+        props = props or {}
+        local title = props.display_title or props.title
+        if not title or title == "" then title = path:match("([^/]+)%.[^./]*$") or path:match("[^/]*$") end
+        keys.title = titleKey(title)
+        keys.author = authorKey(props.authors)
+        keys.series, keys.index = seriesKey(props.series), tonumber(props.series_index)
+    end
+    return keys
+end
+
+local function keysOf(item, with_props)
+    local k = item.quiet_sort
+    if not k or (with_props and k.title == nil) then
+        local ok, made = pcall(sortKeys, item, nil, with_props)
+        k = ok and made or { name = tostring(item.text or ""), opened = 0, added = 0, title = "" }
+        item.quiet_sort = k
+    end
+    return k
+end
+
+local function before(x, y)
+    local ok, ffiUtil = pcall(require, "ffi/util")
+    if ok and ffiUtil.strcoll then return ffiUtil.strcoll(x, y) end
+    return x < y
+end
+
+-- nil sorts after any value
+local function lastIfNil(x, y)
+    if x == nil then return false end
+    if y == nil then return true end
+    return nil
+end
+
+local function byName(a, b) return a.name < b.name end
+
+local function byTitle(a, b)
+    if a.title ~= b.title then return before(a.title, b.title) end
+    return byName(a, b)
+end
+
+local function bySeries(a, b)
+    if a.series ~= b.series then
+        local r = lastIfNil(a.series, b.series)
+        if r ~= nil then return r end
+        return before(a.series, b.series)
+    end
+    if a.index ~= b.index then
+        local r = lastIfNil(a.index, b.index)
+        if r ~= nil then return r end
+        return a.index < b.index
+    end
+    return byTitle(a, b)
+end
+
+local ORDERS = {
+    quiet_recent = function(a, b)
+        if a.opened ~= b.opened then return a.opened > b.opened end
+        if a.added ~= b.added then return a.added > b.added end
+        return byName(a, b)
+    end,
+    quiet_added = function(a, b)
+        if a.added ~= b.added then return a.added > b.added end
+        return byName(a, b)
+    end,
+    quiet_title = byTitle,
+    quiet_author = function(a, b)
+        if a.author ~= b.author then
+            local r = lastIfNil(a.author, b.author)
+            if r ~= nil then return r end
+            return before(a.author, b.author)
+        end
+        return bySeries(a, b)
+    end,
+    quiet_series = bySeries,
+}
+
+local sorts_ready = false
+if okBL and BookList and type(BookList.collates) == "table" then
+    for i, s in ipairs(SORTS) do
+        local order, with_props = ORDERS[s.id], s.id ~= "quiet_recent" and s.id ~= "quiet_added"
+        BookList.collates[s.id] = {
+            text = "Quiet: " .. s.label,
+            menu_order = 200 + i,
+            item_func = function(item, ui)
+                local ok, k = pcall(sortKeys, item, ui, with_props)
+                item.quiet_sort = ok and k or nil
+                if not ok then logger.warn("quiet library: no sort keys for", item.path, k) end
+            end,
+            init_sort_func = function(cache)
+                return function(a, b) return order(keysOf(a, with_props), keysOf(b, with_props)) end, cache
+            end,
+        }
+    end
+    sorts_ready = true
+end
+
+local function currentSort()
+    local id = G_reader_settings:readSetting("collate")
+    for _, s in ipairs(SORTS) do
+        if s.id == id then return s end
+    end
 end
 
 local Pill = Widget:extend{ w = 0, h = 0, pct = 0, Q = nil }
@@ -732,9 +964,9 @@ function StoreButton:onCloseWidget()
     self.icon, self.label = nil, nil
 end
 
--- "Hide read": an outlined pill like Store, left of the grid/list switch. On, it has the switch's soft fill and a
--- check mark, and finished books are left out of the Library (KOReader's status filter, see filteredOut). It is as
--- wide as it is when on, so turning it on doesn't move it.
+-- "Hide read": an outlined pill like Store, left of Sort and the grid/list switch. On, it has the switch's soft fill
+-- and a check mark, and finished books are left out of the Library (KOReader's status filter, see filteredOut). It
+-- is as wide as it is when on, so turning it on doesn't move it.
 local ReadFilter = InputContainer:extend{ fm = nil, h = 0, Q = nil }
 
 local function hidingRead()
@@ -795,6 +1027,78 @@ function ReadFilter:onCloseWidget()
     self.icon, self.label = nil, nil
 end
 
+-- Sort: an outlined pill like Hide read, between it and the grid/list switch (all three change what the list
+-- shows): the sort icon and the order's word ("Recent", "Added"), as wide as the widest word, so a new order
+-- doesn't move it. A tap opens the Sort sheet (qh_sheets.sort); "Sort" while KOReader's own menu has picked one of
+-- its orders.
+local SortButton = InputContainer:extend{ fm = nil, h = 0, Q = nil }
+
+-- A new order: kept as KOReader's own setting (collate, saved with its settings), read one way only (KOReader's
+-- reverse switch would turn "Newest first" into oldest first), and the list back on its first page.
+local function applySort(fm, button, id)
+    G_reader_settings:saveSetting("collate", id)
+    G_reader_settings:delSetting("reverse_collate")
+    local fc = fm and fm.file_chooser
+    if fc then
+        if type(fc.path_items) == "table" and fc.path then fc.path_items[fc.path] = nil end
+        fc:refreshPath()
+    end
+    if button then UIManager:setDirty(fm, "ui", button.dimen) end
+end
+
+function SortButton:init()
+    local Q, px = self.Q, self.Q.px
+    self.border = px(3)
+    local IconWidget = require("ui/widget/iconwidget")
+    local isz = math.floor((self.h - 2 * self.border) * 0.62)
+    self.icon = IconWidget:new{ file = iconPath("sort"), width = isz, height = isz, alpha = true }
+    self.labels, self.label_w = { none = Q.text("Sort", 29) }, 0
+    for _, s in ipairs(SORTS) do self.labels[s.id] = Q.text(s.short or s.label, 29) end
+    for _, label in pairs(self.labels) do self.label_w = math.max(self.label_w, label:getSize().w) end
+    self.pad, self.gap = px(16), px(10)
+    self.w = self.pad + isz + self.gap + self.label_w + self.pad + px(4)
+    self.dimen = Geom:new{ x = 0, y = 0, w = self.w, h = self.h }
+    self.ges_events = {
+        TapSortButton = { GestureRange:new{ ges = "tap", range = function() return self.dimen end } },
+    }
+end
+
+function SortButton:getSize() return Geom:new{ w = self.w, h = self.h } end
+
+function SortButton:paintTo(bb, x, y)
+    self.dimen.x, self.dimen.y = x, y
+    local Q, w, h, b = self.Q, self.w, self.h, self.border
+    local r = math.floor(h / 2)
+    Q.fillRound(bb, x, y, w, h, Q.LINE, r, r, r, r)
+    Q.fillRound(bb, x + b, y + b, w - 2 * b, h - 2 * b, Q.PAPER, r - b, r - b, r - b, r - b)
+    local s = currentSort()
+    local label = self.labels[s and s.id or "none"]
+    local isz, lsz = self.icon:getSize(), label:getSize()
+    local lx = x + math.floor((w - isz.w - self.gap - lsz.w) / 2)
+    self.icon:paintTo(bb, lx, y + math.floor((h - isz.h) / 2))
+    label:paintTo(bb, lx + isz.w + self.gap, y + math.floor((h - lsz.h) / 2))
+end
+
+function SortButton:onTapSortButton()
+    local fm = self.fm
+    UIManager:nextTick(function()
+        local ok, Sheets = pcall(require, "qh_sheets")
+        if not ok or type(Sheets) ~= "table" or not Sheets.sort then
+            logger.warn("quiet library: no Sort sheet:", Sheets)
+            return
+        end
+        local s = currentSort()
+        Sheets.sort(SORTS, s and s.id, function(id) applySort(fm, self, id) end)
+    end)
+    return true
+end
+
+function SortButton:onCloseWidget()
+    if self.icon then self.icon:free() end
+    for _, label in pairs(self.labels or {}) do label:free() end
+    self.icon, self.labels = nil, {}
+end
+
 -- Search field: with SimpleUI's "Library" title off (change 026: the Library tab already says where you are),
 -- search is a wide outlined field from SimpleUI's search button to the Store button, the same file search with a far
 -- bigger target than the icon. The hint is grey, as a field's hint is; the word "library" keeps the place named.
@@ -807,8 +1111,17 @@ function SearchField:init()
     local isz = math.floor((self.h - 2 * self.border) * 0.62)
     self.icon = IconWidget:new{ file = iconPath("search"), width = isz, height = isz, alpha = true }
     self.pad, self.gap = px(20), px(12)
-    self.label = Q.text("Search your library", 29,
-        { color = Q.INK2, max_width = math.max(px(40), self.w - 2 * self.pad - isz - self.gap) })
+    -- the longest hint that fits whole: the field narrows as the header gains buttons
+    local room = math.max(px(40), self.w - 2 * self.pad - isz - self.gap)
+    local hints = { "Search your library", "Search books", "Search" }
+    for i, hint in ipairs(hints) do
+        local label = Q.text(hint, 29, { color = Q.INK2, max_width = i == #hints and room or nil })
+        if i == #hints or label:getSize().w <= room then
+            self.label = label
+            break
+        end
+        label:free()
+    end
     self.dimen = Geom:new{ x = 0, y = 0, w = self.w, h = self.h }
     self.ges_events = {
         TapSearchField = { GestureRange:new{ ges = "tap", range = function() return self.dimen end } },
@@ -870,12 +1183,22 @@ local function addSwitch(fm)
         table.insert(tb, switch)
         fm._quiet_view_switch = switch
     end
-    if okFC and not (fm._quiet_read_filter and inTitleBar(tb, fm._quiet_read_filter)) then
-        local filter = ReadFilter:new{ fm = fm, h = h, Q = Q }
+    if sorts_ready and not (fm._quiet_sort_btn and inTitleBar(tb, fm._quiet_sort_btn)) then
+        local sort = SortButton:new{ fm = fm, h = h, Q = Q }
         local right = Screen:getWidth()
         local switch = fm._quiet_view_switch
         if switch and switch.overlap_offset then right = switch.overlap_offset[1] end
-        -- close to the switch (both change what the list shows), clear of the "Library" title
+        sort.overlap_align = nil
+        sort.overlap_offset = { right - Screen:scaleBySize(10) - sort.w, y }
+        table.insert(tb, sort)
+        fm._quiet_sort_btn = sort
+    end
+    if okFC and not (fm._quiet_read_filter and inTitleBar(tb, fm._quiet_read_filter)) then
+        local filter = ReadFilter:new{ fm = fm, h = h, Q = Q }
+        local right = Screen:getWidth()
+        local switch = fm._quiet_sort_btn or fm._quiet_view_switch
+        if switch and switch.overlap_offset then right = switch.overlap_offset[1] end
+        -- close to Sort and the switch (all three change what the list shows), clear of the "Library" title
         filter.overlap_align = nil
         filter.overlap_offset = { right - Screen:scaleBySize(10) - filter.w, y }
         table.insert(tb, filter)
@@ -911,7 +1234,8 @@ end
 
 local function removeSwitch(fm)
     local tb = fm.title_bar
-    for _, key in ipairs({ "_quiet_view_switch", "_quiet_store_btn", "_quiet_read_filter", "_quiet_search_field" }) do
+    for _, key in ipairs({ "_quiet_view_switch", "_quiet_sort_btn", "_quiet_store_btn", "_quiet_read_filter",
+            "_quiet_search_field" }) do
         local widget = fm[key]
         if widget then
             local i = tb and inTitleBar(tb, widget)
