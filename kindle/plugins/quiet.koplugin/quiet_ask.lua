@@ -13,6 +13,8 @@ Search & Ask: one field to find anything in the book or ask about it (design: "S
   Ask.SUGGESTIONS             -- { page = {…}, selection = {…} }: id + label of each suggestion
 
   - Typing: "120" or "40%" offers "Go to page 120" / "Go to 40%" straight away; a chapter title offers that chapter.
+    While the keyboard is up the sheet keeps its height and only the part under the field is redrawn, so the field
+    never moves and its text never waits behind a suggestion's e-ink update.
   - Go: matching words (capitals and accents ignored) in a background process; a question goes to Claude
     (quiet_claude.lua) with what's been read so far (quiet_bookctx.lua) and its pages come back as links; four
     words or more without a question word find the passage they describe (shared words, then Jev if it's set up).
@@ -37,6 +39,7 @@ local RightContainer = require("ui/widget/container/rightcontainer")
 local TextBoxWidget = require("ui/widget/textboxwidget")
 local UIManager = require("ui/uimanager")
 local VerticalGroup = require("ui/widget/verticalgroup")
+local VerticalSpan = require("ui/widget/verticalspan")
 local Widget = require("ui/widget/widget")
 local logger = require("logger")
 local BookCtx = require("quiet_bookctx")
@@ -181,6 +184,58 @@ function Ask:init()
         edit_callback = function() UIManager:nextTick(function() self:onInputEdited() end) end,
     }
     Sheet.init(self)
+    self:knowBookWords()
+end
+
+-- The book's own words up to the page (its names above all), so that the keyboard's corrections leave them alone:
+-- 2-quiet-keyboard.lua reads them from the field's parent, quiet_known_words. Collected in the background, once per
+-- book and layout, then only the pages read since.
+local book_words = { key = nil, page = 0, set = nil, job = nil }
+
+function Ask:knowBookWords()
+    local ui = self.ui
+    local doc = ui and ui.document
+    if not doc or not ui.rolling then return end
+    local key = tostring(doc.file) .. "|" .. BookCtx.fingerprint(doc)
+    if book_words.key ~= key then
+        if book_words.job then book_words.job:cancel() end
+        book_words.key, book_words.page, book_words.set, book_words.job = key, 0, {}, nil
+    end
+    self.quiet_known_words = book_words.set
+    local page = BookCtx.currentPage(ui)
+    if book_words.job or page <= book_words.page then return end
+    local from, n = book_words.page + 1, doc:getPageCount()
+    book_words.job = BookCtx.runAsync(function()
+        local a = doc:getPageXPointer(from)
+        local b
+        if page < n then
+            b = doc:getPageXPointer(page + 1)
+        else
+            -- this is a copy of the reader: moving to the end here moves nothing on screen
+            pcall(function()
+                doc:gotoPos(2 ^ 30)
+                b = doc:getXPointer()
+            end)
+        end
+        local text = a and b and a ~= b and doc:getTextFromXPointers(a, b, false) or ""
+        local seen, out = {}, {}
+        -- letters (accented: UTF-8 lead bytes \195-\201) with apostrophes inside, as the keyboard reads words; curly
+        -- quotes, dashes (\226...) and no-break spaces (\194\160) end one ("“Queequeg”" is queequeg)
+        for w in text:gmatch("[%a\195-\201][%a'\128-\191\195-\201]*") do
+            w = w:lower():gsub("'+$", "")
+            if #w >= 3 and not seen[w] then
+                seen[w] = true
+                out[#out + 1] = w
+            end
+        end
+        return out
+    end, function(words)
+        if book_words.key ~= key then return end
+        book_words.job = nil
+        if type(words) ~= "table" then return end
+        for _, w in ipairs(words) do book_words.set[w] = true end
+        book_words.page = math.max(book_words.page, page)
+    end)
 end
 
 function Ask:kbHeight()
@@ -205,13 +260,19 @@ function Ask:paintTo(bb, x, y)
 end
 
 -- Rebuild in place and refresh what changed; when the panel moves or shrinks, the page under it is repainted too.
-function Ask:update(mode)
+-- below_field: only what's under the field changed (typing), so the field, and the text going into it, are left out
+-- of the e-ink update and never wait behind it.
+function Ask:update(mode, below_field)
     if self.closed then return end
     local old = self.panel_region
     self:rebuild()
     local new = self:regionNow()
     local moved = not old or old.y ~= new.y or old.h ~= new.h
     local region = old and old:combine(new) or new
+    if below_field and not moved and self.field_end then
+        local top = new.y + self.field_end + 2 -- clear of the field row (see onInputEdited)
+        region = Geom:new{ x = new.x, y = top, w = new.w, h = new.y + new.h - top }
+    end
     UIManager:setDirty(moved and "all" or self, function() return mode or "ui", region end)
 end
 
@@ -314,6 +375,7 @@ function Ask:fieldRow(inner)
             if self.input:getText() ~= "" then self:clear() else self:showKeyboard() end
         end,
     }
+    self.clear_tap = clear
     local row = HorizontalGroup:new{
         align = "center",
         Q.hspan(30), Q.icon("search", 44), Q.hspan(20),
@@ -764,6 +826,7 @@ function Ask:build()
     add(CenterContainer:new{ dimen = Geom:new{ w = inner, h = px(10) }, Sheet.grip() })
     add(Q.vspan(16))
     add(self:fieldRow(inner))
+    self.field_end = used + px(3) -- the group sits 3 px down in the panel (panel_h below)
     add(Q.vspan(6))
     add(self:switchRow(inner))
     if self.focus_text then
@@ -778,6 +841,10 @@ function Ask:build()
         if offers then add(Q.vspan(8)); add(offers) end
         if text == "" and not self.results then add(Q.vspan(12)); add(self:suggestionBlock(inner)) end
         add(Q.vspan(24))
+        -- while typing, the sheet keeps the height it came up with: the field stays put and the page under the
+        -- sheet isn't redrawn each time a suggestion comes or goes
+        if self.kb_min_h and used < self.kb_min_h then add(VerticalSpan:new{ width = self.kb_min_h - used }) end
+        self.kb_min_h = math.max(self.kb_min_h or 0, used)
     elseif self.results then
         local offers = self:offerChips(self.results.offers, inner)
         if offers then add(Q.vspan(8)); add(offers) end
@@ -862,13 +929,17 @@ function Ask:effort()
     return list[#list] and list[#list].id
 end
 
+-- Read once per sheet: the chapters and page count don't change while it's open, and this ran on every key.
 function Ask:offerCtx()
-    local toc = {}
-    if self.ui.toc then
-        pcall(function() self.ui.toc:fillToc() end)
-        toc = self.ui.toc.toc or {}
+    if not self._offer_ctx then
+        local toc = {}
+        if self.ui.toc then
+            pcall(function() self.ui.toc:fillToc() end)
+            toc = self.ui.toc.toc or {}
+        end
+        self._offer_ctx = { total = self.ui.document:getPageCount(), toc = toc }
     end
-    return { total = self.ui.document:getPageCount(), toc = toc }
+    return self._offer_ctx
 end
 
 ---------------------------------------------------------------------------------------------------- input
@@ -880,8 +951,24 @@ function Ask:onInputEdited()
     local sig = (text == "" and "empty" or "text")
     for _, o in ipairs(offers) do sig = sig .. "|" .. o.label end
     if sig ~= self._edit_sig then
+        -- the first letter or a cleared field also shows or hides the field's × (in the field row): the whole sheet
+        -- then; after that only what's under the field changes
+        local flipped = not self._edit_sig or (self._edit_sig:sub(1, 5) == "empty") ~= (text == "")
         self._edit_sig = sig
-        if self.kb_visible then self:update() end
+        if self.kb_visible then
+            -- only what's under the field (the text itself is the keyboard's: DU, no flash), and the field's x when
+            -- it comes or goes; REAGL here would hold KOReader ~0.2 s between two letters
+            self:update(nil, true)
+            if flipped then
+                local x = self.clear_tap
+                -- inset: KOReader merges redraws that touch, and this one and the one under the field would then
+                -- take the letter's own DU redraw (between them) into one "ui"
+                UIManager:setDirty(nil, function()
+                    local d = x and x.dimen
+                    if d and d.x then return "ui", Geom:new{ x = d.x + 4, y = d.y + 4, w = d.w - 8, h = d.h - 8 } end
+                end)
+            end
+        end
     end
 end
 
@@ -892,6 +979,7 @@ end
 
 function Ask:showKeyboard()
     if self.closed then return end
+    if not self.kb_visible then self.kb_min_h = nil end -- a tap in the field while typing keeps the height
     self.input:onShowKeyboard()
     self.kb_visible = self.input:isKeyboardVisible()
     self:update()

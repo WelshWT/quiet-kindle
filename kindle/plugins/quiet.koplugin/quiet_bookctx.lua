@@ -406,24 +406,44 @@ end
 
 -- The system text: the book and the rules. Kept identical for a book (and switch position) on purpose: it's part
 -- of the cached prefix, so anything that changes per page belongs in the question.
+-- Two kinds of question. The story (what happens, who, why): from the text sent, with page citations. The book as a
+-- book (its series and which one it is, the reading order, the author, when it came out): from what the AI knows,
+-- since the text rarely says. Asked for: "Is this the first book in this series? ... it couldn't answer ... we should
+-- be able to answer questions in like a meta sense about the book that aren't spoilers". What the AI knows about a
+-- book comes from reviews, summaries and wikis, where the spoilers are: nothing past the reader's page from it either,
+-- and of later books only their titles and order, with "What's ahead" on too (that switch is about this book's text).
 function BookCtx.system(props, ahead)
     local title = props and (props.display_title or props.title) or ""
     local author = props and props.authors and props.authors:gsub("\n", ", ") or ""
+    local series = props and type(props.series) == "string" and props.series:find("%S") and props.series ~= "N/A"
+        and props.series or nil
+    local index = series and tonumber(props.series_index)
     local lines = {
         "You're helping someone who is reading " .. (title ~= "" and ("“" .. title .. "”") or "a book")
-            .. (author ~= "" and (" by " .. author) or "") .. " on a Kindle.",
+            .. (author ~= "" and (" by " .. author) or "") .. " on a Kindle."
+            .. (series and (" The book's file says it is " .. (index and ("book " .. index .. " of") or "part of")
+                .. " the series “" .. series .. "”.") or ""),
         "The book's text is in the first message, with page markers like [p 12] and chapter titles marked with ===.",
         "",
-        "- Answer from that text. Cite the pages you rely on like this: (p 12) or (p 15–16).",
+        "- Questions about the story (what happens, who someone is, why they did something): answer from that text. "
+            .. "Cite the pages you rely on like this: (p 12) or (p 15–16).",
+        "- Questions about the book itself (whether it's part of a series and which book it is, the order to read them "
+            .. "in, its author and their other books, when it came out, its genre, what inspired it): answer from what "
+            .. "you know, and say in a few words that it's not from the book's text. If you don't know this book well "
+            .. "enough to be sure, say so rather than guess.",
     }
     if ahead then
         lines[#lines + 1] = "- The text includes what comes after the reader's page, because they asked for it. You may use it; "
-            .. "say when something happens later than where they are."
+            .. "say when something happens later than where they are. From what you know, add nothing past the end of "
+            .. "that text: of later books in the series, only their titles and order."
     else
-        lines[#lines + 1] = "- The text stops at the reader's page. Use nothing you may know about this book beyond it: no hints "
-            .. "about what happens later, no spoilers, not even to say that something will matter."
+        lines[#lines + 1] = "- The text stops at the reader's page, and so must you, whether from the text or from what you "
+            .. "know: nothing that happens after it, in this book or a later one (no events, deaths, reveals, twists or "
+            .. "where anyone ends up), and no hints that something will matter. Of later books in the series, only "
+            .. "their titles and order."
     end
-    lines[#lines + 1] = "- If the text doesn't answer the question, say so plainly in one sentence."
+    lines[#lines + 1] = "- Earlier books in the series are fine to talk about: the reader is past them."
+    lines[#lines + 1] = "- If neither the text nor what you know answers it without spoiling, say so plainly in one sentence."
     lines[#lines + 1] = "- Keep it short: plain sentences for a small e-ink screen, a few short paragraphs at most. "
         .. "No headings, tables or bold; a list only when asked for one (one short line per item)."
     return table.concat(lines, "\n")

@@ -1,11 +1,33 @@
 #!/usr/bin/env bash
-# kawake on|off — stop (on) or allow (off) the Kindle's screensaver while Claude works on it.
+# kawake on|off — keep the Kindle awake (on) or let it sleep again (off) while Claude works on it.
+# Done as KOReader's own Keep alive does it: powerd's preventScreenSaver, and KOReader told so (PluginShare.keepalive,
+# and pause_auto_suspend so it doesn't try to sleep either). Never the first alone: KOReader's auto-suspend then finds
+# the Kindle still awake after its timeout and its Kindle timer spins (2-quiet-sleep.lua has the fix), which froze the
+# screen once. off restarts auto-suspend's timers, stopped while kept awake.
 # KOReader's own idle sleep is a setting (auto_suspend_timeout_seconds), changed through a change file.
 set -euo pipefail
-host=$("$(dirname "$0")/khost")
+here=$(dirname "$0")
+host=$("$here/khost")
 case "${1:-}" in
-    on)  ssh "$host" 'lipc-set-prop com.lab126.powerd preventScreenSaver 1' ;;
-    off) ssh "$host" 'lipc-set-prop com.lab126.powerd preventScreenSaver 0' ;;
-    *)   echo "usage: kawake on|off" >&2; exit 2 ;;
+    on)
+        "$here/kcmd" lua "local P = require('pluginshare') P.keepalive = true P.pause_auto_suspend = true return 'KOReader: kept awake'"
+        ssh "$host" 'lipc-set-prop com.lab126.powerd preventScreenSaver 1'
+        ;;
+    off)
+        ssh "$host" 'lipc-set-prop com.lab126.powerd preventScreenSaver 0'
+        # the Kindle timer only while there's time left before auto-suspend (unpatched, it would spin); past it,
+        # _start() puts the Kindle to sleep
+        off_lua=(
+            "local P = require('pluginshare') P.keepalive = false P.pause_auto_suspend = false"
+            "local ui = require('apps/reader/readerui').instance or require('apps/filemanager/filemanager').instance"
+            "local as = ui and ui.autosuspend if not as then return 'KOReader: can sleep (no auto-suspend)' end"
+            "as:_unschedule() as:_start()"
+            "local idle = require('ui/time').to_number(require('ui/uimanager'):getElapsedTimeSinceBoot() - as.last_action_time)"
+            "if as._start_kindle and idle < as.auto_suspend_timeout_seconds then as:_unschedule_kindle() as:_start_kindle() end"
+            "return string.format('KOReader: can sleep (idle %d s of %d)', idle, as.auto_suspend_timeout_seconds)"
+        )
+        "$here/kcmd" lua "${off_lua[*]}" # one line: the bridge reads one
+        ;;
+    *) echo "usage: kawake on|off" >&2; exit 2 ;;
 esac
 ssh "$host" 'lipc-get-prop com.lab126.powerd status | grep prevent'

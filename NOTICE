@@ -33,6 +33,11 @@ Included
   copyright notice. The dictionary itself is not included; see README.md.
 - kindle/data/quiet-sleep/: sleep covers drawn by tools/sleep-covers/make_covers.py with Rubik Black by Hubert and
   Fischer (https://fonts.google.com/specimen/Rubik), SIL Open Font License 1.1. The font file is not included.
+- kindle/data/quiet-keyboard/en.words.gz: the keyboard's word list, made by tools/keyboard-words/make_words.py from
+  the English word lists of Android's keyboard (AOSP LatinIME, dictionaries/en_US_wordlist.combined.gz and
+  en_GB_wordlist.combined.gz), Copyright (C) The Android Open Source Project, Apache License 2.0
+  (kindle/data/quiet-keyboard/LICENSE-Apache-2.0.txt). Changed: the two lists merged, words keyed without accents,
+  offensive and "not a word" entries marked or left out, and only the always-corrections that aren't words kept.
 - docs/images/: screenshots of Quiet in KOReader's emulator with public-domain books from Standard Ebooks
   (https://standardebooks.org), whose editions and covers are dedicated to the public domain (CC0).
 

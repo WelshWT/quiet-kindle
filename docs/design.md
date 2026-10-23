@@ -92,10 +92,48 @@ matters as much: one shape per job.
   your page or selection as the focus, and nothing past it unless the one switch, "What's ahead", is on. Amazon's
   own "Ask this Book" (Kindle app, December 2025) limits answers to the reading position the same way. Answers cite
   pages you can tap.
+- Questions about the book itself (is it the first in its series, the reading order, the author, when it came out)
+  are answered from what the AI knows, since the text rarely says: marked as not from the text, and with a "not
+  sure" over a guess. That knowledge comes from reviews and wikis, where the spoilers are, so it stops at your page
+  too: nothing that happens after it in this book or a later one, later books by title and order only (with "What's
+  ahead" on as well), earlier books in a series fair game.
 - Optional semantic search: TypeSafe's Jev picks the passage closest in meaning and decides whether you're finding
   words or asking.
 - The page never freezes while an answer streams: requests run in a child process. Certificates are checked against
   KOReader's CA bundle, and keys live only on the Kindle.
+
+## Keyboard
+
+- The Kindle's own keyboard, not a better-looking KOReader one: it's the keyboard the hands already know (Amazon's
+  reader, its search, its store). KOReader's put a comma right of "l", had a fifth row of digits and arrows, typed a
+  second character on a slight swipe, and dropped both letters when two fingers overlapped. A sentence typed on it
+  on 22 Oct came out "thw typi is rea,lh buhhhy".
+- Amazon's keyboard can't be reused as it is (an X11 window typing into X programs; KOReader owns the framebuffer
+  and the touch screen), so it is copied from what the Kindle ships: the keymap and icons are read on the device,
+  the behaviour from libkb's code. Where libkb was improved on, it's for not losing or doubling letters: touches
+  between keys go to the nearest key, a frame follows a sliding finger only 1 mm past the key's edge, a finger is
+  new only with a new tracking id.
+- Feedback at touch-down, text at lift, as on the Kindle: what you see first is that the key took your finger;
+  e-ink can't show the letter that fast, so the frame (black only, A2) goes out first and the text update never
+  queues behind it.
+- While the keyboard is up the Search & Ask sheet keeps its height: suggestions appear in place, and the field you
+  are typing into never moves.
+- Typing doesn't flash. A field redrawn the usual way goes through the e-ink controller's AUTO mode, which picks the
+  flashing GC16 waveform whenever the text has grey edges; typed text goes out as DU (black and white, fast, no
+  flash) and gets its smooth edges back in one REAGL pass once typing pauses.
+- Suggestions over prediction: phones settled on three words above the keys with the likeliest in the middle
+  (Gboard, iOS QuickType), and on e-ink the row only changes once typing pauses, so it never competes with the
+  letters.
+- Where the finger landed, not just which key: a decoder as Gboard's (Google's 2017 paper) scores each tap against
+  every key by distance, so a tap between g and h means both, and a word's letters and how common it is are weighed
+  together. The Kindle's own engine (XT9) was tried first and dropped: it sees only the letters typed, and makes no
+  corrections of its own. The word list is AOSP's (hand-curated for keyboards, frequencies included): a list of ours
+  would have been worse.
+- Corrections cautious, as on a phone. In a reading app many unknown words are names, and people write "rn" and
+  "idk": a wrong correction costs more than a missed one. So the word as typed is always a candidate too, a
+  correction must beat it clearly, a real word or a short one changes only for a slip onto a neighbouring key or two
+  swapped letters, and the book's words, the library's names and what you've put back or typed twice are never
+  touched. The fix is shown before it happens (bold, middle), and one backspace takes it back for good.
 
 ## Stats
 

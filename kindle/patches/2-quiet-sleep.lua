@@ -128,3 +128,28 @@ userpatch.registerPatchPluginFunc("simpleui", function()
         if force then return showHSAfterResume(plugin, force) end
     end
 end)
+
+-- KOReader's auto-suspend keeps a Kindle awake while it's used by resetting powerd's own sleep timeout ("t1") every
+-- 4 minutes, and checks again after the time left until the next reset. Once the Kindle stays awake past auto-suspend
+-- (kept awake from outside KOReader, or a sleep that didn't happen), that time left is negative: the check runs again
+-- at once, and again, for as long as it stays negative (minutes, then longer each time), asking powerd each time
+-- whether the Kindle is charging, ~150 times a second. The screen froze and syslog filled /var with powerd's answers.
+-- Here a check that is already due waits the 4 minutes instead.
+local T1_CHECK = 4 * 60
+userpatch.registerPatchPluginFunc("autosuspend", function(AutoSuspend)
+    if type(AutoSuspend) ~= "table" or type(AutoSuspend._schedule_kindle) ~= "function" or AutoSuspend._quiet_t1 then
+        return
+    end
+    AutoSuspend._quiet_t1 = true
+    local schedule_kindle = AutoSuspend._schedule_kindle
+    AutoSuspend._schedule_kindle = function(self, ...)
+        local scheduleIn = UIManager.scheduleIn
+        UIManager.scheduleIn = function(um, seconds, action, ...)
+            if action == self.kindle_task and not (seconds > 0) then seconds = T1_CHECK end
+            return scheduleIn(um, seconds, action, ...)
+        end
+        local ok, err = pcall(schedule_kindle, self, ...)
+        UIManager.scheduleIn = scheduleIn
+        if not ok then error(err, 0) end
+    end
+end)

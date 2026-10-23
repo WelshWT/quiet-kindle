@@ -2,7 +2,8 @@
 Kindle-like frame on warm paper, so they read like the e-ink device they come from.
 
 usage: python compose.py <screenshots dir> <output dir>
-The screenshots are what the emulator's Screen:shot() saves; they are grey-toned here like e-ink (the panel shows 16
+Each image below is made when all its screenshots are in the directory (the others are skipped, so one can be redone
+alone). The screenshots are what the emulator's Screen:shot() saves (or bin/kshot, from the Kindle itself); they are grey-toned here like e-ink (the panel shows 16
 greys, slightly warm), framed (a plain dark body, no logos), shadowed and laid out per image below.
 """
 import sys
@@ -81,8 +82,17 @@ def card(w, h):
     return bg
 
 
+def missing(names, out):
+    gone = [n for n in names if not (SRC / f"{n}.png").exists()]
+    if gone:
+        print(out, "skipped: no", ", ".join(f"{n}.png" for n in gone))
+    return gone
+
+
 def row(names, out, dev_w=560, gap=70, margin=(120, 110), widths=None):
     """Devices side by side, centred on a card."""
+    if missing(names, out):
+        return
     devs = [device(eink(SRC / f"{n}.png"), (widths or {}).get(n, dev_w)) for n in names]
     inner_w = sum(d.width - 2 * p for d, p in devs) + gap * (len(devs) - 1)
     inner_h = max(d.height - 2 * p for d, p in devs)
@@ -99,6 +109,8 @@ def row(names, out, dev_w=560, gap=70, margin=(120, 110), widths=None):
 
 def hero(out, names=("home", "reader", "sleep-q3")):
     """Three devices: the book in the middle, a little larger and higher; Home and a sleep screen either side."""
+    if missing(names, out):
+        return
     side_w, mid_w = 600, 700
     left, lp = device(eink(SRC / f"{names[0]}.png"), side_w)
     mid, mp = device(eink(SRC / f"{names[1]}.png"), mid_w)
@@ -124,3 +136,4 @@ row(["text-tab", "layout-tab", "more-sheet"], "sheets.png")
 row(["ask", "stats"], "ask-stats.png", dev_w=640)
 row(["sleep-q3", "sleep-q2-dark", "sleep-q5", "sleep-cover", "sleep-frosted"], "sleep.png", dev_w=380, gap=50)
 row(["light", "sleep-sheet"], "light-sleep.png", dev_w=600)
+row(["keyboard-fix", "keyboard-undo"], "keyboard.png", dev_w=640)

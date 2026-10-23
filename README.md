@@ -47,9 +47,19 @@ and alignment, drawn as little pages. One set for every book, as on a Kindle. Mo
 ![The Text sheet's Text and Layout tabs, the More sheet](docs/images/sheets.png)
 
 **Search & Ask and Stats.** Find words offline, or ask an AI about the book: answers cite their pages and never read
-past yours unless "What's ahead" is on. Stats shows your streak, this week, the current book and every reading day.
+past yours unless "What's ahead" is on; questions about the book itself (its series, its author) get answered too,
+still without spoilers. Stats shows your streak, this week, the current book and every reading day.
 
 ![Search & Ask with an answer, the Stats page](docs/images/ask-stats.png)
+
+**The Kindle's keyboard.** Every text field types on a copy of Amazon's own keyboard: its layout, read from the
+Kindle itself, with accents on a long press. A key shows as pressed the moment your finger lands, two fingers
+typing fast no longer lose letters, and the text doesn't flash as you type. Above the keys, word suggestions; a
+slip ("teh", "keybaord", a tap that landed between two keys) is fixed when you press space, decided the way Google's
+keyboard decides it, and one backspace takes the fix back. Names, the book's own words and the way you write
+("rn", "idk") are left alone.
+
+![Typing in Search & Ask: a slip with its correction ready in bold; after the space, the word as typed is one tap away](docs/images/keyboard.png)
 
 **Sleep screens.** Five QUIET covers (light or dark, or Shuffle between them), the book you're reading with its
 progress, or the page you left behind frosted glass, chosen from the pull-down sheet.
@@ -65,8 +75,9 @@ steps, isn't fooled by your hand's shadow, and learns from the changes you make.
 **Faster than stock.** Opening a book from Home ~850 → ~490 ms, back to Home ~900 → ~600 ms, a Look change in one
 re-layout instead of up to seven; measured on the device (see [Speed](#speed)).
 
-<sub>Screenshots: KOReader 2026.07.1's emulator at the Paperwhite's 1272×1696 with this repo's patches and plugins,
-public-domain books from Standard Ebooks, and demo reading stats; the AI answer is a sample. Framed by
+<sub>Screenshots: KOReader 2026.07.1's emulator at the Paperwhite's 1272×1696 with this repo's patches and plugins
+(the keyboard: the Kindle itself), public-domain books from Standard Ebooks, and demo reading stats; the AI answer is
+a sample. Framed by
 `tools/readme-shots/compose.py`.</sub>
 
 ## Requirements
@@ -118,7 +129,8 @@ changed on the Kindle stay yours.
 ### Uninstall
 
 With the Kindle on USB, delete from `$KINDLE/koreader/`: `patches/1-quiet-changes.lua`, every
-`patches/2-quiet-*.lua`, `patches/8-quiet-exit.lua`, `patches/quiet-amazon-guard.sh`, and the plugins
+`patches/2-quiet-*.lua`, `patches/8-quiet-exit.lua`, `patches/quiet-amazon-guard.sh`, `patches/quiet-decoder.lua`,
+`patches/quiet-words.lua`, `data/quiet-keyboard/`, `cache/quiet-keyboard-words.bin`, and the plugins
 `quiet.koplugin`, `quiethome.koplugin` and `quietstats.koplugin` (and `simpleui.koplugin` if you don't want it).
 Then put your backup back: `settings.reader.lua`, `settings/`, `defaults.custom.lua` (or delete Quiet's if you had
 none), and the `.sdr` folders (`rsync -a backup/documents/ "$KINDLE/documents/"`). If you turned on booting straight
@@ -214,6 +226,42 @@ restart; KOReader saves the open book first and reopens it afterwards.
   Amazon's reader opens them) are virtual entries among the real ones, sorted with them (by their download for
   Date added, and in a series read from Amazon's title, "…: Sherlock Holmes, Book 5"), marked with a ↗ badge
   and "Opens in Amazon's reader ↗"; tap opens the book there, hold explains. Nothing is written to documents/.
+- `kindle/patches/2-quiet-keyboard.lua` (change 032) — KOReader's on-screen keyboard gives way to a copy of the
+  Kindle's, for every text field. Its layout is the Kindle's own keymap for the screen
+  (`/usr/share/keyboard/en_US/en_US-1272x1696.keymap.gz`) and its icons come from `/usr/share/keyboard/images`,
+  both read on the device, so nothing of Amazon's is in this repo. The behaviour is libkb's, read with REA: a key
+  is framed when the finger lands and types when it lifts, a slide moves the frame, a lift that slipped onto the
+  next key within 300 ms still types the first, a second finger types both keys in the order they landed, a 400 ms
+  hold opens the accents (or repeats backspace: 400 ms, then 200 ms, then whole words), and Shift is one capital,
+  again for Caps lock. Touches that start on the keyboard are taken before KOReader's gesture detector (so two
+  fingers aren't read as a pinch), by tracking id; all others pass through untouched. The frame is drawn straight
+  to the screen as four A2 strips. Devices without a keymap for their screen, and non-English keyboards, keep
+  KOReader's keyboard. Typed text goes out as DU (KOReader's "ui" is AUTO, which picks the flashing GC16 for grey
+  text edges: the "flashing box"), every redraw inside the field, cursor and line included, and one REAGL update
+  smooths the letters after a 2 s pause.
+  Word suggestions and corrections (change 033): a decoder made the way Google describes Gboard's ("Mobile
+  Keyboard Input Decoding with Finite-State Transducers", 2017), in plain LuaJIT (`patches/quiet-decoder.lua`), in a
+  process of its own (`patches/quiet-words.lua`, started with KOReader's luajit 8 s after KOReader). Each tap counts
+  against every letter by its distance from the key's centre (a Gaussian, from where the finger landed), letters left
+  out or extra and swapped taps cost a little, and each word by its frequency in AOSP's keyboard word list (US and
+  British English, 165,000 words: `data/quiet-keyboard/en.words.gz`, made by `tools/keyboard-words/make_words.py`;
+  Apache-2.0, see NOTICE). The word as typed is scored too, as a word or as an unknown one, and a correction must beat
+  it by a margin. A real word, or one of four letters or fewer, changes only by slips onto neighbouring keys or two
+  swapped letters ("rn", "omg", "hmm" stay); a capital makes an unknown word cheap to keep (names). The list is
+  searched as a trie, a beam of 64 prefixes per tap, and mapped from a cache built on first use
+  (`cache/quiet-keyboard-words.bin`, ~11 MB): the helper keeps ~3 MB of its own. It is asked on every key (answers
+  are read only when poll() says so: a stuck helper can't hold KOReader up; one that doesn't answer in 3 s is
+  restarted), and a row of three words above the keys is drawn by DU once typing pauses for 0.3 s, the likeliest in
+  the middle. A space (or . , ? ! : ; or return) types the bold middle word, the correction, when there is one; the
+  left one, in quotes, keeps what was typed. Words of the book open in Search & Ask (collected from the pages read,
+  in the background), words in the names of the books on the Kindle, words put back before and unknown words typed
+  twice as they were are never corrected. Backspace right after a correction takes it back and remembers the word
+  (`quiet_keyboard_keep`, 300). Off for passwords and number fields. `tools/keyboard-eval/eval.lua` measures it on
+  simulated typing (taps scattered around the keys' centres, 9% on another key): 62% of words right as typed, 93%
+  after correction, no dictionary word typed right changed, 34 of 34 informal words and 35 of 40 names from
+  public-domain novels kept (every capitalised one; the five changed, typed in lower case, are a letter or two from
+  a real word: stubb, fogg).
+  `quiet_keyboard_log` (off) writes each decision to `settings/quiet/keyboard.log`, for tuning on the device.
 - `kindle/patches/2-quiet-currently.lua` — Home's Currently Reading card: "5% done", then honest time read and
   time left to the end of the story. SimpleUI draws it; the numbers come from `quiet_readtime.lua`.
 - `kindle/plugins/quiethome.koplugin` — Amazon's books, read-only from Amazon's catalog `/var/local/cc.db`
@@ -253,7 +301,8 @@ restart; KOReader saves the open book first and reopens it afterwards.
     `quiet_find.lua` the offline matches (no capitals or accents, numbers and chapter names jump),
     `quiet_bookctx.lua` decides what Claude reads (chapters before yours up to ~100k tokens;
     your chapter up to your page; nothing past it unless "What's ahead" is on; the earlier chapters are cached for
-    5 minutes, renewed by each follow-up). `quiet_claude.lua` (Opus 5.5 at
+    5 minutes, renewed by each follow-up) and its rules: the story from the text, with pages; the book itself (series,
+    reading order, author) from what it knows, never past your page, later books by title only. `quiet_claude.lua` (Opus 5.5 at
     medium effort by default; model and effort under the answer) and `quiet_jev.lua` (TypeSafe's Jev: picks
     the passage closest in meaning, routes "find" vs "ask") run over `quiet_net.lua`: HTTPS in a child process,
     so the page never freezes, with certificates checked against KOReader's own CA bundle (`data/ca-bundle.crt`, part of every KOReader
@@ -292,7 +341,8 @@ Because changes apply once, anything you later adjust on the Kindle itself (text
 | `bin/khold X Y [ms [X2 Y2]]` | press and hold (default 1.2 s), optionally drag to X2 Y2 to select text; the finger is lifted even if ssh drops |
 | `bin/kcmd status` | what's on screen: `home` or `reader <file>` (first answer after idle can take ~20 s; waits up to 45 s; exits 1 on an error answer) |
 | `bin/ktrace on/dump` | time taps, repaints and e-ink updates inside KOReader, in ms |
-| `bin/kawake on/off` | block or allow the screensaver: on while an agent works on the Kindle, off when done (a long deep sleep can reset it) |
+| `bin/kawake on/off` | keep the Kindle awake or let it sleep: on while an agent works on the Kindle, off when done (a long deep sleep can reset it). It tells KOReader too, as its own Keep alive does: powerd's `preventScreenSaver` alone makes KOReader's auto-suspend spin once its timeout passes |
+| `bin/kstack` | KOReader's Lua traceback, read from outside it: for a freeze, when `kcmd` gets no answer (find where it's stuck instead of killing it) |
 | `bin/khost` | which ssh host works now: the first of `$KINDLE_HOSTS` (default `kindle`) that answers |
 | `bin/kkeys` | put the Claude and Jev keys on the Kindle (prints only which keys it saved) |
 | `bin/kboot on/off/status` | boot straight into KOReader, or into Amazon's home again (installed checked and staged, one call at a time; `status` compares the installed job) |
@@ -313,6 +363,11 @@ Measured 2026-10-19 on a Paperwhite 12 SE with `bin/ktrace` and timing hooks.
 | Look tile | up to 7 re-layouts | 1, tile shows in ~25 ms | `quiet_looks.lua` batches settings (BatchedUpdate), skips unchanged ones |
 | Three quick A taps | 3 re-layouts, taps dropped | dots move in ~20 ms, 1 re-layout | `quiet_text.lua` applies the size 0.4 s after the last tap |
 | Idle wake-ups | 0.5/s (bridge poll) | 0.05/s after 10 min | adaptive bridge polling |
+| A key, Search & Ask (22 Oct) | shown only after the lift, for 15 ms; text sent ~100 ms after the lift | framed when the finger lands; text sent ~15 ms after the lift, out in ~20 ms | the Kindle's keyboard (`2-quiet-keyboard.lua`); the text no longer waits behind the key's own update |
+| Typing past a suggestion | whole sheet (1272×427) redrawn, field jumps, page under it redrawn | only the part under the field redrawn | the sheet keeps its height while typing; chapters read once per sheet, not per key |
+| Two fingers overlapping | both letters lost | both typed, in order | touches on the keyboard bypass KOReader's two-finger gestures |
+| A letter in a field | "ui" (GC16 here: the changed pixels flash), ~20 ms of KOReader work | DU, no flash, no wait, ~5 ms | every redraw inside the field sent as DU; one REAGL pass after a 2 s pause |
+| Word suggestions | none | above the keys after a 0.3 s pause, ~6 ms per word in their own process (15 ms the first) | a Gboard-style decoder on AOSP's word list (change 033) |
 
 A page turn is ~30 ms of KOReader work plus ~205 ms of e-ink waveform (REAGL, the same as Amazon's reader);
 that part is hardware. Measure before changing: `bin/ktrace on`, act with `bin/ktap`, then `bin/ktrace dump`.

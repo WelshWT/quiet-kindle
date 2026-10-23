@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# kstack — where KOReader is, as a Lua traceback read from outside it (/proc/PID/mem; kstack.lua does the reading):
+# for when it's frozen and kcmd gets no answer. Changes nothing. Never kill -9 KOReader with a book open: find where
+# it's stuck, and unstick that.
+set -euo pipefail
+here=$(dirname "$0")
+host=$("$here/khost")
+scp -q "$here/kstack.lua" "$host:/tmp/quiet-kstack.lua"
+ssh "$host" 'pid=
+for p in /proc/[0-9]*; do
+    [ "$(cat $p/comm 2>/dev/null)" = reader.lua ] || continue
+    ppid=$(awk "{print \$4}" $p/stat 2>/dev/null) # KOReader forks a few helpers, also named reader.lua: not those
+    [ "$(cat /proc/$ppid/comm 2>/dev/null)" = reader.lua ] && continue
+    pid=${p#/proc/}
+    break
+done
+rc=1
+if [ -z "$pid" ]; then echo "KOReader is not running" >&2
+else cd /mnt/us/koreader && ./luajit /tmp/quiet-kstack.lua "$pid" && rc=0
+fi
+rm -f /tmp/quiet-kstack.lua
+exit $rc'
