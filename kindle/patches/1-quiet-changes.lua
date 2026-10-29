@@ -487,7 +487,9 @@ local function run()
     local applied = registry.applied or {}
     local pending = {}
     for entry in lfs.dir(changes_dir) do
-        local id = entry:match("^(.+)%.lua$")
+        -- macOS creates AppleDouble ._ files on the Kindle's FAT volume.
+        -- Hidden metadata is not an executable settings change.
+        local id = entry:match("^([^.].*)%.lua$")
         if id and not applied[id] then pending[#pending + 1] = id end
     end
     table.sort(pending)

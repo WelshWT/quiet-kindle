@@ -49,3 +49,9 @@ No Amazon code, firmware, fonts, books or other Amazon files are in this reposit
 Kindle's own software offers to programs on the device (lipc properties, app URIs, the light sensor device, Amazon's
 read-only book catalog), and refers to the Kindle's fonts by file name. Quiet does not touch DRM: books bought from
 Amazon still open only in Amazon's reader.
+
+Paperwhite 3 additions, 2026 WelshWT
+- Original field guide and Quiet modifications: AGPL-3.0-or-later.
+- integrations/simpleui-2.7.5/module_recent.lua: derived from SimpleUI 2.7.5,
+  Copyright (c) 2026 doctorhetfield-cmd, MIT; see adjacent LICENSE.
+- Experimental modifications; see TESTING-PAPERWHITE3.md for pending checks.

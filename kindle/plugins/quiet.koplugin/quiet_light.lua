@@ -189,10 +189,10 @@ function Light:build()
         local amazon = Q.Tap:new{
             w = px(300), h = px(60),
             content = HorizontalGroup:new{ align = "center",
-                Q.text("Kindle home", 26, { color = Q.INK2 }), Q.hspan(10), Q.icon("leave", 30) },
+                Q.text("Exit KOReader", 26, { color = Q.INK2 }), Q.hspan(10), Q.icon("leave", 30) },
             callback = function()
                 self:close()
-                UIManager:nextTick(Light.leaveForKindleHome)
+                UIManager:nextTick(function() require("quiet_amazon").leaveKOReader(0) end)
             end,
         }
         bottom = OverlapGroup:new{

@@ -1,3 +1,5 @@
+> **WelshWT Paperwhite 3 fork — experimental.** Read [the field guide](PAPERWHITE3.md), [web version](https://welshwt.github.io/quiet-kindle/) and [test status](TESTING-PAPERWHITE3.md) before applying this branch. Home, Exit and library changes need device acceptance checks; cover indexing is unresolved. Original upstream README follows.
+
 # Quiet for Kindle
 
 **A calm, fast, Kindle-like reading UI for KOReader on a jailbroken Kindle Paperwhite.** Quiet cuts KOReader's flood

@@ -57,6 +57,7 @@ end
 -- Amazon's books in the Library (quiethome.koplugin/qh_library), once plugins are loaded. Their made-up paths end
 -- in ".kfx", a format KOReader can't open, so only those paths are looked up.
 local function amazonLib()
+    if G_reader_settings:isTrue("quiet_independent_library") then return nil end
     local ok, L = pcall(require, "qh_library")
     return ok and type(L) == "table" and L or nil
 end
@@ -1204,7 +1205,7 @@ local function addSwitch(fm)
         table.insert(tb, filter)
         fm._quiet_read_filter = filter
     end
-    if not (fm._quiet_store_btn and inTitleBar(tb, fm._quiet_store_btn)) then
+    if not G_reader_settings:isTrue("quiet_independent_library") and not (fm._quiet_store_btn and inTitleBar(tb, fm._quiet_store_btn)) then
         local store = StoreButton:new{ h = h, Q = Q }
         local x = gap
         if search and search.overlap_offset then x = search.overlap_offset[1] + search:getSize().w + gap end
