@@ -1,8 +1,29 @@
 # An independent Kindle · Paperwhite 3 field guide
 
-An offline reading setup by WelshWT, built on other people's excellent work. **Experimental edition · 29 October 2026.**
+An offline reading setup by WelshWT, made with the help of ChatGPT and built on other people's excellent work. **Experimental edition · 29 October 2026.**
 
 Read the [web guide](https://welshwt.github.io/quiet-kindle/) or the sections below. This fork preserves Quiet's history and credits. The `paperwhite3-experimental` branch contains our additions; it is not a verified stable release.
+
+## Get guided help with ChatGPT or Claude
+
+**I made this project with the help of ChatGPT. You can use ChatGPT or Claude to guide you through it too.**
+
+1. Connect your Kindle or e-reader to your **Windows PC or Mac using a USB data cable**. Keep the reader offline while checking compatibility and preparing it.
+2. Open ChatGPT or Claude on your computer and give it this webpage: **https://welshwt.github.io/quiet-kindle/**.
+3. Copy the request below. Tell the assistant your exact reader model and firmware, then follow the process one step at a time.
+
+```text
+Help me follow this guide: https://welshwt.github.io/quiet-kindle/
+My e-reader is connected to my Windows PC or Mac by USB.
+First help me identify its exact model and firmware and check compatibility.
+Explain each step simply and check the result before moving on.
+Ask before changing files, installing software, deleting anything or jailbreaking.
+Treat the experimental improvements as unverified and explain the recovery steps.
+If my reader is a Kobo or another brand, use its supported installation guide;
+do not apply the Kindle jailbreak or this Kindle-specific fork unchanged.
+```
+
+Connecting by USB does not automatically give a chat assistant access to your device. It can guide you through manual steps; direct inspection or file changes require an app with suitable local tools and your permission. If the assistant cannot open the webpage, paste the relevant guide section into the chat. Check the maintained upstream instructions together before installing anything.
 
 ## What this actually changes
 
