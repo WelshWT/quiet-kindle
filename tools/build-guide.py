@@ -27,7 +27,8 @@ sections = re.split(r'^## ', text, flags=re.M)[1:]
 body, toc = [], []
 for n, part in enumerate(sections):
     title, rest = part.split('\n', 1)
-    ident = 'overview' if n == 0 else ('credits' if title.startswith('Credits') else f'step-{n}')
+    number = re.match(r'^(\d+)\.', title)
+    ident = f'step-{number[1]}' if number else ('guided-help' if title.startswith('Get guided') else ('credits' if title.startswith('Credits') else 'overview'))
     toc.append(f'<a href="#{ident}">{html.escape(title)}</a>')
     chunks, lines, i = [], rest.strip().splitlines(), 0
     while i < len(lines):
@@ -70,9 +71,9 @@ for n, part in enumerate(sections):
 
 template = '''<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="A practical Paperwhite 3 field guide to offline reading with KOReader, SimpleUI and Quiet. Clear steps, honest testing status and recovery notes."><meta name="theme-color" content="#f6f3eb"><title>An independent Kindle — WelshWT</title><link rel="stylesheet" href="style.css"></head><body>
-<a class="skip" href="#overview">Skip to the guide</a>
+<a class="skip" href="#guided-help">Skip to the guide</a>
 <header><a href="#">W / Independent Kindle</a><a href="https://github.com/WelshWT/quiet-kindle/tree/paperwhite3-experimental">Source on GitHub ↗</a></header>
-<main><div class="hero"><div><div class="eyebrow">The Paperwhite 3 field guide · by WelshWT</div><h1>Your books.<br>Your reader.<br><em>On your terms.</em></h1><p class="intro">Give an older Kindle a calmer reading life. Bring your own documents, organise your library and build a Home screen that earns its space.</p><div class="pills"><span>Paperwhite 3 / 2015</span><span>Firmware 5.16.2.1.1</span><span>USB + offline reading</span></div><a class="button" href="#step-1">Start with your device ↓</a><a class="button secondary" href="#step-7">Explore our improvements</a></div>
+<main><div class="hero"><div><div class="eyebrow">The Paperwhite 3 field guide · by WelshWT</div><p class="eyebrow">Made with the help of ChatGPT</p><h1>Your books.<br>Your reader.<br><em>On your terms.</em></h1><p class="intro">Give an older Kindle a calmer reading life. Bring your own documents, organise your library and build a Home screen that earns its space.</p><div class="pills"><span>Paperwhite 3 / 2015</span><span>Firmware 5.16.2.1.1</span><span>USB + offline reading</span></div><a class="button" href="#guided-help">Start with guided help ↓</a><a class="button secondary" href="#step-7">Explore our improvements</a></div>
 <div class="device-wrap"><div class="device" role="img" aria-label="Illustrative home layout with two currently reading books, a clock and compact statistics. Concept only."><div class="screen"><div class="screen-top"><span>09:41 · 76%</span><span>Exit KOReader ↗</span></div><h3>Currently reading</h3><div class="books"><div class="book"><div class="cover">A book<br>of your own</div><p>Notes &amp; ideas</p><div class="progress"><i style="width:38%"></i></div>38% read</div><div class="book"><div class="cover">The next<br>chapter</div><p>Stories &amp; discoveries</p><div class="progress"><i style="width:64%"></i></div>64% read</div></div><div class="metrics"><div><strong>24</strong>minutes today</div><div><strong>7</strong>day streak</div></div><p>Your library. A little less noise.</p><div class="screen-bottom"><b>Home</b><span>Library</span><span>Collections</span><span>Settings</span></div></div></div><p class="concept">Layout concept · not an on-device screenshot</p></div></div>
 <div class="notice"><strong>Experimental edition · 29 October 2026.</strong> The jailbreak and reader ran on our device. Several interface changes still need a full device check, and cover indexing remains unresolved. Amazon's underlying operating system stays installed.</div>
 <div class="shell"><aside class="toc"><details open><summary>In this guide</summary>TOC</details><p class="note">One device, a documented process.<br>Check each checkpoint before moving on.</p></aside><article>BODY</article></div></main>
