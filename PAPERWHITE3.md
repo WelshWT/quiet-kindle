@@ -153,4 +153,10 @@ I prepared the Paperwhite 3 article and modifications as WelshWT, with the help 
 
 This independent project is not endorsed by Amazon or the upstream developers. No proprietary firmware, Amazon fonts, personal books, private caches, keys or raw device logs are included in our additions.
 
-Publishing a guide or open-source fork is not a blanket legal clearance for circumvention. Laws differ by jurisdiction, and licence compliance does not settle anti-circumvention or contract questions. For UK readers, review [CDPA section 296ZA](https://www.legislation.gov.uk/ukpga/1988/48/section/296ZA) and the related software/device provisions; US readers can consult [the current §1201 exemptions](https://www.copyright.gov/title37/201/37cfr201-40.html). A dedicated Kindle is not automatically covered by an exemption for all-purpose tablets. Use documents you have permission to copy/convert; see [UK copyright exceptions](https://www.gov.uk/guidance/exceptions-to-copyright). Seek qualified advice for a commercial service or exploit distribution.
+**Experimental use and responsibility**
+
+This project focuses on customising your own reader and reading documents you have permission to use. Respect the upstream software licences and check the rules applicable to your location.
+
+This is an experimental project, provided without warranty. Some modifications remain unverified, and results may vary by device and firmware.
+
+You choose to follow these instructions and apply the modifications at your own risk. You are responsible for checking compatibility, backing up your files and settings, and any resulting damage, data loss, device malfunction or other consequences, to the extent permitted by applicable law.
