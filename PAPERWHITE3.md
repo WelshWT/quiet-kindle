@@ -1,71 +1,68 @@
-# Giving an older Kindle a more independent reading life
+# How I gave my old Kindle a new reading life
 
-An offline reading setup by WelshWT, made with the help of ChatGPT and built on other people's excellent work. **Experimental project · article updated 11 November 2026.**
+A personal experiment by WelshWT, made with the help of ChatGPT and built on the work of the Kindle modding community. **Experimental project · updated 11 November 2026.**
 
-This is the story and practical guide behind [my independent Kindle project](https://welshwt.github.io/quiet-kindle/): an older reader, a different interface and a library of my own documents. The [published fork](https://github.com/WelshWT/quiet-kindle/tree/paperwhite3-experimental) preserves Quiet's history and credits. Its additions remain experimental.
+This is my account of modifying a Kindle Paperwhite from 2015: what I changed, the tools I used, what worked and what still needs testing. The [project webpage](https://welshwt.github.io/quiet-kindle/) and [experimental fork](https://github.com/WelshWT/quiet-kindle/tree/paperwhite3-experimental) document the work. This is a record of my particular setup rather than a universal installation procedure.
 
-## Get guided help with ChatGPT or Claude
+## How ChatGPT helped me
 
-**I made this project with the help of ChatGPT. You can use ChatGPT or Claude to guide you through it too.**
+**I made this project with the help of ChatGPT.** I connected the Kindle to my Mac over USB and worked through device identification, installation, file organisation and troubleshooting with an assistant.
 
-Start by connecting your Kindle or e-reader to a **Windows PC or Mac with a USB data cable**. Keep the reader offline while you check compatibility and prepare it. Open ChatGPT or Claude on the computer, share [this article](https://welshwt.github.io/quiet-kindle/) and ask it to guide you through the process for your exact model and firmware.
+The physical connection mattered: the Kindle had to appear as a USB drive before its files could be inspected or changed. My workflow used a Mac; the preparation resources also cover Windows PCs. I kept the reader offline during the initial checks and preparation.
 
-You can copy the request below into your chat. Work through one stage at a time, checking the result before continuing.
+I asked for the model and firmware to be checked first, for each stage to be explained, and for results to be checked before moving on. I also set an explicit boundary around changes: inspection first, with approval before installation, deletion or jailbreaking.
 
-```text
-Help me follow this guide: https://welshwt.github.io/quiet-kindle/
-My e-reader is connected to my Windows PC or Mac by USB.
-First help me identify its exact model and firmware and check compatibility.
-Explain each step simply and check the result before moving on.
-Ask before changing files, installing software, deleting anything or jailbreaking.
-Treat the experimental improvements as unverified and explain the recovery steps.
-If my reader is a Kobo or another brand, use its supported installation guide;
-do not apply the Kindle jailbreak or this Kindle-specific fork unchanged.
-```
+An ordinary chat does not gain access to a connected device simply because a USB cable is plugged in. In my workflow, direct inspection and file changes depended on the local tools and permissions available to the assistant. Manual guidance is a separate option when those tools are absent. I used the upstream documentation as the reference for the device-specific steps.
 
-Connecting by USB does not automatically give a chat assistant access to your device. It can guide you through manual steps; direct inspection or file changes require an app with suitable local tools and your permission. If the assistant cannot open the webpage, paste the relevant guide section into the chat. Check the maintained upstream instructions together before installing anything.
+## Why I wanted a different reading experience
 
-## A reader built around my books
+I wanted to upload my own documents, organise them in a way that made sense to me and read without needing an Amazon account for everyday offline use.
 
-The starting point was simple: I wanted to upload my own documents, organise them in a way that made sense to me and read without needing an Amazon account for everyday offline use. A library full of support folders, a Home screen that missed the books I was reading and an awkward route to exit the reader all got in the way.
+A library full of support folders, a Home screen that missed the books I was reading and an awkward route to exit the reader all got in the way. I often read several books at once. My ideal Home screen would show those books and their progress, with smaller clock and statistics widgets around them.
 
-The project brings together [KOReader](https://github.com/koreader/koreader), [SimpleUI](https://github.com/doctorhetfield-cmd/simpleui.koplugin) and [Quiet](https://github.com/karlosdb/quiet-kindle), with experimental changes for this older Paperwhite. The aim is straightforward USB transfers, EPUB and PDF reading, collections, a useful Home screen and accessible settings.
+The project brought together [KOReader](https://github.com/koreader/koreader), [SimpleUI](https://github.com/doctorhetfield-cmd/simpleui.koplugin) and [Quiet](https://github.com/karlosdb/quiet-kindle). I wanted local EPUB and PDF reading, straightforward USB transfers, collections and a calmer interface.
 
-Amazon's operating system remains underneath. This setup has not replaced the firmware, removed every Amazon service, installed Tailscale or enabled automatic boot into KOReader. Optional cloud AI is unnecessary for reading.
+Amazon's operating system remains underneath. I have not replaced the firmware, removed every Amazon service, installed Tailscale or enabled automatic boot into KOReader. Optional cloud AI is unnecessary for local reading.
 
-## Start with the exact model and firmware
+## The Kindle and software I used
 
-Our device was a **Kindle Paperwhite 3, 7th generation (2015)** running **5.16.2.1.1**. We used **KOReader 2026.07.1**, **SimpleUI 2.7.5** and Quiet upstream commit `783a1c15e1917337f33c0f54517c3b75d652e3ea`.
+My device was a **Kindle Paperwhite 3, 7th generation (2015)** running **firmware 5.16.2.1.1**. The setup used **KOReader 2026.07.1**, **SimpleUI 2.7.5** and [Quiet upstream commit 783a1c1](https://github.com/karlosdb/quiet-kindle/commit/783a1c15e1917337f33c0f54517c3b75d652e3ea).
 
-Find the model and firmware in Kindle Settings → Device Options → Device Info. Use the [KindleModding compatibility wizard](https://kindlemodding.org/jailbreak-wizard.html) with your own details. A similar-looking Kindle can require a different method. If its recommendation differs, follow the maintained guide rather than this historical setup.
+The model and firmware information came from Kindle Settings → Device Options → Device Info and the device inspection. The [KindleModding compatibility wizard](https://kindlemodding.org/jailbreak-wizard.html) was the reference for selecting a jailbreak route.
 
-Before continuing, confirm the exact model, firmware and supported jailbreak route. Keep your full serial private.
+That distinction mattered. Similar-looking Kindles can require different methods, and a record of my firmware does not establish compatibility with another reader. I have kept the full serial number out of this publication.
 
-## Prepare the reader before connecting to Wi-Fi
+## Preparing my Kindle before Wi-Fi
 
-Charge well above a low-battery warning; we suggest at least 50% as a conservative preparation target. Keep Airplane Mode on initially. Use a data-capable USB cable and confirm the Kindle appears as a drive on the computer.
+The Kindle initially had about 10% battery, so charging came before modification. It later reached 57% before the process continued. The preparation target discussed was at least 50%, as a conservative working choice rather than a claim about an official minimum.
 
-Back up documents and KOReader settings, including `settings.reader.lua`, `settings/`, `defaults.custom.lua` if present, and book `.sdr` folders. Quiet can clear per-book font/layout overrides, so saving just the books will not preserve all reading preferences.
+I confirmed the USB connection and kept Airplane Mode on during preparation. The [KindleModding preparation overview](https://kindlemodding.org/jailbreaking/) and [update-prevention instructions](https://kindlemodding.org/jailbreaking/prevent-auto-update/) explained the risk of an unwanted firmware update while online.
 
-Read the [KindleModding preparation overview](https://kindlemodding.org/jailbreaking/) and [update-prevention instructions](https://kindlemodding.org/jailbreaking/prevent-auto-update/) before enabling Wi-Fi. The current preparation guide uses temporary filler files and a small remaining free-space allowance. Follow its exact current procedure; filling storage is temporary, not a permanent reading configuration.
+Temporary filler files were used to limit free space during that stage. This was a temporary measure, not the intended long-term storage arrangement. The maintained procedure, rather than a generic storage-filling command, was the reference.
 
-Continue once the backup is readable, the USB connection works and the maintained update-prevention procedure is complete.
+Backup was also part of the discussion. I initially chose to proceed without one; later, during the book-library work, I copied the material I wanted to preserve to external storage. Those were my choices in this experiment, not evidence that backups are unnecessary.
 
-## The WinterBreak2 stage
+For KOReader, the relevant recovery material includes `settings.reader.lua`, `settings/`, `defaults.custom.lua` if present, and each book's `.sdr` folder. Quiet can clear per-book font and layout overrides, so a copy of the book files alone does not preserve all reading preferences or positions.
 
-Only continue if the compatibility wizard selected this route. Use the [maintained WinterBreak2 instructions](https://kindlemodding.org/jailbreaking/WinterBreak2/) and its [official release downloads](https://github.com/KindleModding/Winterbreak2/releases). We used release **1.1.0**; a future release may change the sequence.
+## What happened with WinterBreak2
 
-Download and extract the supplied archive to the Kindle's top-level storage as directed. Safely eject, connect to Wi-Fi when instructed, then open the Kindle browser. Depending on firmware, it may be labelled **Web Browser** or **Experimental Browser** in the menu. The maintained guide supplies the browser address and jailbreak action. Wait for completion; a restart alone is not proof of success.
+The jailbreak route used in my setup was [WinterBreak2](https://kindlemodding.org/jailbreaking/WinterBreak2/), release **1.1.0**, obtained through the [official release resources](https://github.com/KindleModding/Winterbreak2/releases).
 
-On our device, `documents/JAILBROKEN.txt` recorded success and KPM commands subsequently worked. Turn Airplane Mode back on when the online steps are finished. Complete the official [post-jailbreak steps](https://kindlemodding.org/jailbreaking/whats-next/) before removing temporary filler files or assuming update protection is active. Do not delete arbitrary `.bin` files: identify downloaded firmware updates using that guide.
+The archive was extracted to the Kindle's top-level storage as directed by the maintained instructions. After safely ejecting the device, I connected to Wi-Fi for the browser stage. Finding the browser was one of the small points of confusion: its label can be Web Browser or Experimental Browser depending on the firmware.
 
-The useful confirmation is both a successful jailbreak report and working post-install tools. Stop if either check fails.
+The maintained WinterBreak2 page supplied the browser address and jailbreak action. The Kindle restarted during the process, but the restart alone was not the confirmation I relied on.
 
-## Moving into KOReader
+On my device, `documents/JAILBROKEN.txt` recorded success, and KPM commands subsequently worked. I returned the reader to Airplane Mode after the online stages.
 
-Use the [KindleModding post-jailbreak guide](https://kindlemodding.org/jailbreaking/whats-next/) and [KOReader Kindle installation documentation](https://github.com/koreader/koreader/wiki/Installation-on-Kindle-devices). Package selection depends on firmware; do not choose an archive simply because it says Kindle.
+The [post-jailbreak documentation](https://kindlemodding.org/jailbreaking/whats-next/) covered the next steps, including temporary filler removal and update protection. Downloaded firmware files needed to be identified specifically; arbitrary `.bin` files were not interchangeable with unwanted updates.
 
-Our modern jailbreak supplied KPM. These were entered **one at a time in the Kindle's search bar**, waiting for each operation to finish:
+## Getting KOReader running
+
+The references for this stage were the [KindleModding post-jailbreak guide](https://kindlemodding.org/jailbreaking/whats-next/) and [KOReader's Kindle installation documentation](https://github.com/koreader/koreader/wiki/Installation-on-Kindle-devices).
+
+Package selection depended on the firmware. The word Kindle in an archive name was not enough to establish that it was the right build.
+
+My jailbreak supplied KPM. The following commands were entered one at a time in the Kindle's search bar, waiting for each operation to finish:
 
 ```text
 ;kpm update
@@ -73,90 +70,100 @@ Our modern jailbreak supplied KPM. These were entered **one at a time in the Kin
 ;kpm launch koreader
 ```
 
-If your jailbreak does not provide KPM, use its documented installation route instead. These are Kindle search commands, not Mac Terminal commands. In this setup KOReader opened its quickstart guide. Test a document before adding interface modifications.
+These were Kindle search commands, not commands run in Mac Terminal. They describe the KPM route available in my setup; other jailbreak environments may use a different installation method.
 
-Before adding more software, open a permitted EPUB or PDF, close it and reopen it. Confirm that KOReader starts normally and preserves the reading position.
+KOReader opened its quickstart guide, and I subsequently opened books in it. A complete reading-position check across closing, reopening and restarting remains part of the project's device acceptance checklist rather than a result I am claiming here.
 
-## Giving the reader a calmer interface
+## Adding SimpleUI and Quiet
 
-[SimpleUI](https://github.com/doctorhetfield-cmd/simpleui.koplugin) provides interface modules. [Quiet](https://github.com/karlosdb/quiet-kindle) builds on them. Pin [SimpleUI 2.7.5](https://github.com/doctorhetfield-cmd/simpleui.koplugin/releases/tag/2.7.5) for this setup; newer releases have not been checked against these modifications. Quiet was developed on a newer Paperwhite, so its upstream screenshots and timing measurements are not evidence of Paperwhite 3 performance.
+[SimpleUI](https://github.com/doctorhetfield-cmd/simpleui.koplugin) supplied interface modules, and [Quiet](https://github.com/karlosdb/quiet-kindle) built on them. I used the [SimpleUI 2.7.5 release](https://github.com/doctorhetfield-cmd/simpleui.koplugin/releases/tag/2.7.5); the modifications in this fork have not been checked against newer versions.
 
-Close KOReader before connecting the Kindle by USB. Unzip the official [SimpleUI 2.7.5 release](https://github.com/doctorhetfield-cmd/simpleui.koplugin/releases/tag/2.7.5) and place its `simpleui.koplugin` folder inside `koreader/plugins/`. Save a copy of any existing plugin first, along with the settings and book sidecars described earlier. Settings must not be edited while KOReader is running.
+Quiet was developed on a newer Paperwhite. Its upstream screenshots and timing measurements are not measurements of my Paperwhite 3.
 
-Next, follow [Quiet's installation instructions](https://github.com/karlosdb/quiet-kindle#install). Its `kindle/` folder mirrors the reader's `koreader/` folder: merge the contents into `koreader/`, rather than creating a nested `koreader/kindle/` folder.
+The installation put `simpleui.koplugin` inside `koreader/plugins/`. Quiet's `kindle/` folder mirrored the contents of the Kindle's `koreader/` folder, so the contents were merged there rather than placed inside a nested `koreader/kindle/` directory. [Quiet's installation documentation](https://github.com/karlosdb/quiet-kindle#install) was the reference.
 
-Quiet changes more than appearance. It applies shared text settings, changes tap zones and, through `settings/quiet/changes/011-faster-transitions.lua`, disables several optional plugins, including calibre, OPDS and syncing features. If you need those features, decide whether to leave that change out before the first launch.
+The file changes were made with KOReader closed. Its settings can be rewritten on exit, which makes editing them while it is running unreliable.
 
-Safely eject the device, unplug it and start KOReader. The first launch applies Quiet's numbered changes. If it fails, close KOReader and reconnect by USB before inspecting `koreader/settings/quiet/log.txt` and `koreader/crash.log`.
+Quiet changed more than appearance. It applied shared text settings and tap zones. The change file `settings/quiet/changes/011-faster-transitions.lua` also disables optional plugins, including calibre, OPDS and syncing features. That behaviour matters when deciding which parts of the upstream profile fit a particular reading workflow.
 
-No API key or Amazon account is needed for KOReader's local reading features. Keep optional cloud features unconfigured for an offline setup. A claim about account-free reading is not a guarantee about every Kindle's initial setup or jailbreak requirements.
+After the device was ejected and KOReader restarted, Quiet applied its numbered changes. The useful troubleshooting records were `koreader/settings/quiet/log.txt` and `koreader/crash.log`.
 
-One practical fix came from the Mac: Apple's hidden `._` companion files were being mistaken for Quiet change scripts. Our change loader ignores dot-prefixed files. The setup log subsequently showed the original numbered changes applying. This is the most directly confirmed code fix in this fork.
+KOReader's local reading features did not need an API key or an Amazon account. Optional cloud features were not necessary for the offline experience I wanted. That observation does not establish the account requirements of every Kindle's initial setup or jailbreak route.
 
-## Making the library about the books
+A Mac-specific problem appeared here: Apple's hidden `._` companion files were being mistaken for Quiet change scripts. The modified loader ignores dot-prefixed files. The setup log then showed the original numbered changes applying. This is the most directly confirmed code fix in my fork.
 
-Copy permitted EPUB and PDF files into the Kindle's `documents/` folder over USB. A simple starting structure is `documents/Fiction/`, `documents/Non-fiction/` and `documents/Reference/`. Folder names organise storage; **collections** provide separate groupings inside the reader, where supported by your interface version.
+## Rebuilding my document library
 
-Set KOReader's home folder to `documents/`. Our experimental profile also locks browsing to that home folder and hides hidden/unsupported entries, keeping `koreader`, `libkh` and other support folders out of the normal library view. Keep system folders in place: they support the installed tools.
+The library work focused on EPUB and PDF files in `documents/`, transferred over USB. Categories such as `documents/Fiction/`, `documents/Non-fiction/` and `documents/Reference/` illustrate the kind of folder arrangement I wanted. Collections offer a separate way of grouping books inside compatible reader interfaces.
 
-KFX is not a useful input for this offline KOReader workflow. Obtain a permitted EPUB/PDF original rather than renaming a KFX extension. For your own DOCX documents, export to PDF for fixed layout or convert to EPUB with a suitable converter, then inspect headings, images and reading order. Conversion does not guarantee perfect formatting, and DRM-free files still have copyright.
+The experimental profile sets KOReader's home folder to `documents/`, locks normal browsing to that location and hides hidden or unsupported entries. Its aim is to keep support folders such as `koreader` and `libkh` out of the normal book view while leaving those tools intact on storage.
 
-For duplicates, compare file hashes for exact copies, then review title/author/edition manually. Two editions or a PDF and EPUB can be intentionally different. Do not delete by title alone.
+That restriction still needs a final on-device check. The intended behaviour and a verified result are different things.
 
-The intended result is a Library that starts in documents, opens your files and shows the folders you chose for books. This profile's folder restriction still needs an on-device acceptance check.
+KFX files were not useful inputs for the offline KOReader workflow I wanted. Renaming the extension would not turn them into EPUBs. The useful alternatives were EPUB or PDF originals with appropriate permission for copying and conversion.
 
-## The improvements in this fork
+For my own DOCX material, the format choices were PDF for a fixed page layout or EPUB for more flexible reading. Headings, images and reading order still require inspection after conversion. DRM-free also does not mean copyright-free.
 
-These additions are published for inspection and testing. **Do not treat them as a one-click, stable upgrade.** The branch modifies Quiet itself and includes a separate SimpleUI 2.7.5 integration file. Review [the source and test checklist](TESTING-PAPERWHITE3.md) before installation.
+Duplicate checking combined exact-file comparisons with review of titles, authors and editions. A matching title alone was not enough to establish that two files were duplicates: different editions, or PDF and EPUB versions, can be intentionally different.
 
-The most directly confirmed fix concerns hidden macOS files. Ignoring dot-prefixed change files allowed Quiet's numbered setup changes to apply successfully.
+## What I changed in the fork
 
-The remaining work targets everyday usability. Change 034 configures five larger book rows per Library page; change 035 aims to restore visible interface settings. Change 036 brings together a documents-only library and a more compact Home layout. Its application was logged, but the final screen and interactions still need checking on the device.
+I published the additions for inspection and experimentation, with [the source and test checklist](TESTING-PAPERWHITE3.md) recording their status. I am not presenting this branch as a verified one-click upgrade.
 
-A separate SimpleUI module aims to show multiple unfinished books under **Currently reading**. The direct Exit patch adds a top-bar action, and Quiet's sheet also receives an exit action. An independent-library setting suppresses Quiet's Amazon catalogue and Store button. These behaviours need device testing, including confirmation that exiting saves each book's position.
+Alongside the confirmed Mac file-loader fix, **change 034** configures five larger book rows per Library page. The configuration was applied, but its final appearance and cover sizing still need a visual check on the six-inch screen.
 
-The SimpleUI override is `integrations/simpleui-2.7.5/module_recent.lua`. It replaces `koreader/plugins/simpleui.koplugin/modules/module_recent.lua` only on that pinned version. Keep a copy of the original first. The Quiet files in this branch keep the same paths as upstream; merge them only while KOReader is closed. Do not copy the entire repository root onto the device.
+**Change 035** aims to restore visible interface settings after the usual menu became hidden. Its Settings interaction still needs checking.
 
-Changing Home is not the same as removing Amazon firmware. The new Currently reading module uses reading history, so books must have been opened in KOReader; files copied over USB do not automatically count as currently reading. Clock, statistics, goals and quotes remain in the proposed layout at smaller scales.
+**Change 036** combines the documents-only library with a more compact Home layout. Its application was recorded in the log, but the final screen and interactions remain unverified.
 
-The acceptance check is deliberately practical: open two books and advance each, return Home and confirm both appear with their own progress. Then visit Settings, use Exit KOReader, reopen the reader and check both positions. Repeat offline and after restarting KOReader. This acceptance pass remains pending; the [device test checklist](TESTING-PAPERWHITE3.md) records the outstanding checks.
+A separate SimpleUI module aims to show multiple unfinished books under **Currently reading**. The direct Exit patch adds a top-bar action for Home, Library and Stats, and Quiet's sheet also receives an exit action. An independent-library setting suppresses Quiet's Amazon catalogue and Store button. These behaviours still need device testing, including confirmation that exit preserves reading positions.
 
-## What still needs work
+The separate integration file is [module_recent.lua](integrations/simpleui-2.7.5/module_recent.lua). It replaces `koreader/plugins/simpleui.koplugin/modules/module_recent.lua` in the pinned 2.7.5 plugin. It is not a claim of compatibility with another SimpleUI version.
 
-**Cover grid partly blank:** distinguish covers embedded in EPUBs from thumbnails already indexed by the reader. An embedded cover does not prove the library cache has loaded it. Try a single book, return to Library and allow normal indexing. Some PDFs have no dedicated cover image.
+The Quiet files retain the same relative paths as upstream. My installation work merged those files into the corresponding KOReader folders while it was closed; the entire repository root was not the device payload. The original module and settings are the relevant rollback material for that replacement.
 
-**Known unresolved issue:** our library still had gaps in indexed covers. A bulk scanner was unstable. A separately generated compressed cover cache then caused KOReader startup to fail because its frame metadata did not meet the reader's expectations. We restored the earlier native cache and disabled the bulk scanner. Restart success after that rollback has not yet been confirmed. The failed cache generator, private cache database and bulk-scan patch are excluded from this publication.
+The proposed Currently reading module uses history, so a book must have been opened in KOReader to appear there. Copying it over USB does not automatically make it a current read. Clock, statistics, goals and quotes remain in the proposed layout at smaller scales.
 
-**KOReader stops opening after a modification:** stop installing more changes. Reconnect by USB after KOReader has closed, preserve the log locally, remove only the newly added patch and restore your own saved settings/plugin files. Do not delete books or factory-reset as a first response. If a generated cover cache caused the failure, restore a known-good cache saved before that experiment. Ask the upstream support community with a redacted log if necessary.
+My pending acceptance check involves opening two books, advancing each and confirming that both appear on Home with their own progress. It also covers the Settings tab, clean exit from Home/Library/Stats, adjacent top-bar touch targets, document-folder browsing and saved positions after reopening. Repeating those checks offline and after restart is recorded in the [device test checklist](TESTING-PAPERWHITE3.md).
 
-**Quiet settings disappear:** upstream layout changes can hide the normal file-manager menu. Our 035 change aims to restore an explicit Settings tab; verify it before relying on it. Deleting a once-applied change file alone does not undo its settings. Use your saved settings, or a deliberate undo change following Quiet's documented change system.
+## The problems I have not finished solving
 
-**No visible difference after restart:** inspect the numbered-change log for success/failure and check that files were copied to `koreader/`, not a nested folder. On macOS, hidden `._` files must not be loaded as Lua scripts.
+Cover indexing remained uneven. A cover embedded in an EPUB is different from a thumbnail already indexed by the reader. A valid embedded image did not establish that the library cache had loaded it, and some PDFs lacked a dedicated cover image. Normal single-book indexing is still part of the outstanding checks.
 
-**Exit is awkward:** the branch adds an Exit KOReader label and touch target for Home/Library/Stats, plus an exit action in Quiet's sheet. This remains a test candidate; confirm saved positions and normal return to the Kindle interface before treating it as solved.
+A bulk scanner proved unstable. A separately generated compressed cover cache then caused KOReader to fail at startup because its frame metadata did not meet the reader's expectations. I restored the earlier native cache and disabled the bulk scanner. Successful startup after that rollback has not yet been confirmed.
 
-## Keeping a way back
+The failed cache generator, private database and bulk-scan patch are excluded from the publication. I have left the failure in this account because it is part of what happened.
 
-Keep your known-good plugin and settings copies. Follow [Quiet's uninstall instructions](https://github.com/karlosdb/quiet-kindle#uninstall) to remove its patches/plugins and restore settings and book sidecars. Restoring `.sdr` folders can also restore older reading positions. Removing patches without restoring settings is not a complete rollback. Automatic KOReader boot, if separately enabled, needs its own reversal; we did not enable it here.
+That problem also clarified the recovery approach: stop layering on changes, preserve the log locally and identify the specific new patch, settings file, plugin or generated cache involved. A known-good saved copy matters more than deleting books or jumping to a factory reset. Redacted logs are the appropriate material for an upstream support discussion.
 
-Do not update SimpleUI independently and assume a 2.7.5 override will still work. Recheck compatibility, change logs and backups before updating the stack. Download packages from maintainers, not copies bundled with books.
+Another issue was the missing Quiet settings. Upstream layout changes could hide the normal file-manager menu; change 035 was my attempt to restore an explicit Settings tab. Deleting a once-applied change file alone does not reverse the settings it wrote. A saved settings copy or deliberate undo change is needed for that.
 
-## The people and resources behind the project
+When a restart appeared to change nothing, the checks were the numbered-change log, the copy destination and the hidden Mac files. The same distinction applies to Exit: the presence of a label is not proof that clean exit and saved positions work correctly.
 
-The jailbreak stage relies on [WinterBreak2 and KindleModding](https://github.com/KindleModding/Winterbreak2), whose guide credits Scam.Net and Penguins184. This fork links to the maintainers' downloads rather than redistributing the exploit archive.
+## Keeping the experiment reversible
 
-[KOReader](https://github.com/koreader/koreader) supplies the reading engine under AGPL-3.0. [Quiet, created by karlosdb](https://github.com/karlosdb/quiet-kindle), supplies the base project under AGPL-3.0-or-later; its original licence, history and notices remain in [my fork](https://github.com/WelshWT/quiet-kindle/tree/paperwhite3-experimental).
+The recovery reference is [Quiet's uninstall documentation](https://github.com/karlosdb/quiet-kindle#uninstall), which covers removing its patches and plugins and restoring settings and book sidecars.
 
-[SimpleUI, created by doctorhetfield-cmd](https://github.com/doctorhetfield-cmd/simpleui.koplugin/tree/2.7.5), supplies the interface modules. The exact 2.7.5 version used here is MIT-licensed, and the derived Recent module retains its [MIT notice](integrations/simpleui-2.7.5/LICENSE). Later versions should not be assumed to use the same licence.
+Restoring `.sdr` folders can restore older reading positions as well. Removing code without restoring the settings it changed is not a complete rollback. Automatic KOReader boot would require its own reversal if separately enabled; I did not enable it here.
 
-I prepared the Paperwhite 3 article and modifications as WelshWT, with the help of ChatGPT. The new article material is offered under AGPL-3.0-or-later with this fork. The [source code](https://github.com/WelshWT/quiet-kindle/tree/paperwhite3-experimental), [original installation instructions](https://github.com/karlosdb/quiet-kindle#install) and [testing status](TESTING-PAPERWHITE3.md) are available for anyone who wants to inspect or improve the work.
+The SimpleUI 2.7.5 override also makes version changes significant. I have not established that an independent SimpleUI update will preserve compatibility. Compatibility notes, change logs and saved copies remain part of any future update work. The package sources used in this account are the maintainers' resources, not software bundled with book downloads.
 
-This independent project is not endorsed by Amazon or the upstream developers. No proprietary firmware, Amazon fonts, personal books, private caches, keys or raw device logs are included in our additions.
+## The people and resources behind my experiment
 
-**Experimental use and responsibility**
+[WinterBreak2 and KindleModding](https://github.com/KindleModding/Winterbreak2) supplied the jailbreak route. The maintained guide credits Scam.Net and Penguins184. My publication links to their downloads rather than redistributing the exploit archive.
 
-This project focuses on customising your own reader and reading documents you have permission to use. Respect the upstream software licences and check the rules applicable to your location.
+[KOReader](https://github.com/koreader/koreader) supplied the reading engine under AGPL-3.0. [Quiet, created by karlosdb](https://github.com/karlosdb/quiet-kindle), supplied the base project under AGPL-3.0-or-later. Its original licence, history and notices remain in [my fork](https://github.com/WelshWT/quiet-kindle/tree/paperwhite3-experimental).
 
-This is an experimental project, provided without warranty. Some modifications remain unverified, and results may vary by device and firmware.
+[SimpleUI, created by doctorhetfield-cmd](https://github.com/doctorhetfield-cmd/simpleui.koplugin/tree/2.7.5), supplied the interface modules. The exact version 2.7.5 source used here is MIT-licensed. The derived Recent module retains its [MIT notice](integrations/simpleui-2.7.5/LICENSE); that statement is specific to this version.
 
-You choose to follow these instructions and apply the modifications at your own risk. You are responsible for checking compatibility, backing up your files and settings, and any resulting damage, data loss, device malfunction or other consequences, to the extent permitted by applicable law.
+I prepared the Paperwhite 3 article and modifications as WelshWT with ChatGPT's help. The new article material is offered under AGPL-3.0-or-later with the fork. The [source code](https://github.com/WelshWT/quiet-kindle/tree/paperwhite3-experimental), [original installation instructions](https://github.com/karlosdb/quiet-kindle#install) and [testing status](TESTING-PAPERWHITE3.md) document the underlying work.
+
+This is my independent project, without endorsement from Amazon or the upstream developers. My additions contain no proprietary firmware, Amazon fonts, personal books, private caches, keys or raw device logs.
+
+**Experimental purpose and responsibility**
+
+My project focuses on customising my own reader and reading documents I have permission to use. I am sharing my experience and experimental source changes, with the upstream software licences and applicable local rules remaining relevant.
+
+I undertook this experiment at my own risk. Device damage, data loss, malfunction and other consequences were risks I accepted in deciding to modify my Kindle. Some modifications remain unverified, and I make no promise of the same outcome on another device or firmware.
+
+The project is provided without warranty. Any independent decision to reproduce the experiment, including compatibility checks, backups and resulting consequences, remains the responsibility of the person making that decision, to the extent permitted by applicable law.
